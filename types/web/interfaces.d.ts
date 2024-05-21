@@ -144,11 +144,14 @@ export class IPDFLinkService {
      * @param {Object} action
      */
     executeSetOCGState(action: Object): void;
-    /**
-     * @param {number} pageNum - page number.
-     * @param {Object} pageRef - reference to the page.
-     */
-    cachePageRef(pageNum: number, pageRef: Object): void;
+}
+/**
+ * @interface
+ */
+export class IPDFPrintServiceFactory {
+    static initGlobals(): void;
+    static get supportsPrinting(): boolean;
+    static createPrintService(): void;
 }
 /**
  * @interface

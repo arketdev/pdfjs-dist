@@ -1,28 +1,21 @@
 {
-  "_from": "pdfjs-dist@latest",
-  "_id": "pdfjs-dist@4.0.269",
-  "_inBundle": false,
-  "_integrity": "sha512-jjWO56tcOjnmPqDf8PmXDeZ781AGvpHMYI3HhNtaFKTRXXPaD1ArSrhVe38/XsrIQJ0onISCND/vuXaWJkiDWw==",
-  "_location": "/pdfjs-dist",
-  "_phantomChildren": {},
-  "_requested": {
-    "type": "tag",
-    "registry": true,
-    "raw": "pdfjs-dist@latest",
-    "name": "pdfjs-dist",
-    "escapedName": "pdfjs-dist",
-    "rawSpec": "latest",
-    "saveSpec": null,
-    "fetchSpec": "latest"
-  },
-  "_requiredBy": [
-    "#USER",
-    "/"
+  "name": "pdfjs-dist",
+  "version": "4.2.67",
+  "main": "build/pdf.mjs",
+  "types": "types/src/pdf.d.ts",
+  "description": "Generic build of Mozilla's PDF.js library.",
+  "keywords": [
+    "Mozilla",
+    "pdf",
+    "pdf.js"
   ],
-  "_resolved": "https://registry.npmjs.org/pdfjs-dist/-/pdfjs-dist-4.0.269.tgz",
-  "_shasum": "3a319367f441e84f9c8aae01d88b0fb5a7defc4e",
-  "_spec": "pdfjs-dist@latest",
-  "_where": "/Users/d.furlan/Documents/Visual Studio/2013/PortalNotification/GlobeWeb 4",
+  "homepage": "http://mozilla.github.io/pdf.js/",
+  "bugs": "https://github.com/mozilla/pdf.js/issues",
+  "license": "Apache-2.0",
+  "optionalDependencies": {
+    "canvas": "^2.11.2",
+    "path2d": "^0.2.0"
+  },
   "browser": {
     "canvas": false,
     "fs": false,
@@ -30,36 +23,11 @@
     "https": false,
     "url": false
   },
-  "bugs": {
-    "url": "https://github.com/mozilla/pdf.js/issues"
-  },
-  "bundleDependencies": false,
-  "dependencies": {
-    "canvas": "^2.11.2",
-    "path2d-polyfill": "^2.0.1"
-  },
-  "deprecated": false,
-  "description": "Generic build of Mozilla's PDF.js library.",
-  "engines": {
-    "node": ">=18"
-  },
-  "homepage": "http://mozilla.github.io/pdf.js/",
-  "keywords": [
-    "Mozilla",
-    "pdf",
-    "pdf.js"
-  ],
-  "license": "Apache-2.0",
-  "main": "build/pdf.mjs",
-  "name": "pdfjs-dist",
-  "optionalDependencies": {
-    "canvas": "^2.11.2",
-    "path2d-polyfill": "^2.0.1"
-  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mozilla/pdfjs-dist.git"
+    "url": "https://github.com/mozilla/pdfjs-dist"
   },
-  "types": "types/src/pdf.d.ts",
-  "version": "4.0.269"
+  "engines": {
+    "node": ">=18"
+  }
 }

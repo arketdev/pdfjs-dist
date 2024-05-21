@@ -55,14 +55,9 @@ export type PDFPageViewOptions = {
      */
     imageResourcesPath?: string | undefined;
     /**
-     * - Allows to use an
-     * OffscreenCanvas if needed.
-     */
-    isOffscreenCanvasSupported?: boolean | undefined;
-    /**
      * - The maximum supported canvas size in
      * total pixels, i.e. width * height. Use `-1` for no limit, or `0` for
-     * CSS-only zooming. The default value is 4096 * 4096 (16 mega-pixels).
+     * CSS-only zooming. The default value is 4096 * 8192 (32 mega-pixels).
      */
     maxCanvasPixels?: number | undefined;
     /**
@@ -99,19 +94,11 @@ export class PDFPageView implements IRenderableView {
     pdfPageRotate: number;
     _optionalContentConfigPromise: Promise<import("../src/display/optional_content_config").OptionalContentConfig> | null;
     imageResourcesPath: string;
-    isOffscreenCanvasSupported: boolean;
     maxCanvasPixels: any;
     pageColors: Object | null;
     eventBus: import("./event_utils").EventBus;
     renderingQueue: import("./pdf_rendering_queue").PDFRenderingQueue | undefined;
-    l10n: {
-        getLanguage(): any;
-        getDirection(): any;
-        get(ids: any, args: null | undefined, fallback: any): Promise<any>;
-        translate(element: any): Promise<any>;
-        pause(): any;
-        resume(): any;
-    };
+    l10n: import("./interfaces").IL10n | GenericL10n | undefined;
     renderTask: any;
     resume: (() => void) | null;
     _isStandalone: boolean | undefined;
@@ -123,6 +110,7 @@ export class PDFPageView implements IRenderableView {
     zoomLayer: ParentNode | null;
     xfaLayer: XfaLayerBuilder | null;
     structTreeLayer: any;
+    drawLayer: any;
     div: HTMLDivElement;
     set renderingState(state: number);
     get renderingState(): number;
@@ -204,6 +192,7 @@ export class PDFPageView implements IRenderableView {
     get thumbnailCanvas(): HTMLCanvasElement | null | undefined;
     #private;
 }
+import { GenericL10n } from "./genericl10n";
 import { AnnotationLayerBuilder } from "./annotation_layer_builder.js";
 import { AnnotationEditorLayerBuilder } from "./annotation_editor_layer_builder.js";
 import { TextLayerBuilder } from "./text_layer_builder.js";

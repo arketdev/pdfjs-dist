@@ -22,7 +22,7 @@
 
 /******/ var __webpack_modules__ = ({
 
-/***/ 759:
+/***/ 588:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 
@@ -845,7 +845,7 @@ class Indent {
 
 /***/ }),
 
-/***/ 275:
+/***/ 273:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 
@@ -1372,32 +1372,38 @@ class DOMLocalization extends Localization {
 
 /***/ }),
 
-/***/ 640:
+/***/ 283:
 /***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   AnnotationEditorLayerBuilder: () => (/* binding */ AnnotationEditorLayerBuilder)
 /* harmony export */ });
-/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(869);
-/* harmony import */ var web_l10n_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(910);
-var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__, web_l10n_utils__WEBPACK_IMPORTED_MODULE_1__]);
-([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__, web_l10n_utils__WEBPACK_IMPORTED_MODULE_1__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
+/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(603);
+/* harmony import */ var web_null_l10n__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(410);
+var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__, web_null_l10n__WEBPACK_IMPORTED_MODULE_1__]);
+([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__, web_null_l10n__WEBPACK_IMPORTED_MODULE_1__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
 
 
 class AnnotationEditorLayerBuilder {
   #annotationLayer = null;
+  #drawLayer = null;
+  #onAppend = null;
+  #textLayer = null;
   #uiManager;
   constructor(options) {
-    this.pageDiv = options.pageDiv;
     this.pdfPage = options.pdfPage;
     this.accessibilityManager = options.accessibilityManager;
-    this.l10n = options.l10n || web_l10n_utils__WEBPACK_IMPORTED_MODULE_1__.NullL10n;
+    this.l10n = options.l10n;
+    this.l10n ||= new web_null_l10n__WEBPACK_IMPORTED_MODULE_1__.GenericL10n();
     this.annotationEditorLayer = null;
     this.div = null;
     this._cancelled = false;
     this.#uiManager = options.uiManager;
     this.#annotationLayer = options.annotationLayer || null;
+    this.#textLayer = options.textLayer || null;
+    this.#drawLayer = options.drawLayer || null;
+    this.#onAppend = options.onAppend || null;
   }
   async render(viewport, intent = "display") {
     if (intent !== "display") {
@@ -1418,10 +1424,9 @@ class AnnotationEditorLayerBuilder {
     }
     const div = this.div = document.createElement("div");
     div.className = "annotationEditorLayer";
-    div.tabIndex = 0;
     div.hidden = true;
     div.dir = this.#uiManager.direction;
-    this.pageDiv.append(div);
+    this.#onAppend?.(div);
     this.annotationEditorLayer = new pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.AnnotationEditorLayer({
       uiManager: this.#uiManager,
       div,
@@ -1429,7 +1434,9 @@ class AnnotationEditorLayerBuilder {
       pageIndex: this.pdfPage.pageNumber - 1,
       l10n: this.l10n,
       viewport: clonedViewport,
-      annotationLayer: this.#annotationLayer
+      annotationLayer: this.#annotationLayer,
+      textLayer: this.#textLayer,
+      drawLayer: this.#drawLayer
     });
     const parameters = {
       viewport: clonedViewport,
@@ -1445,9 +1452,7 @@ class AnnotationEditorLayerBuilder {
     if (!this.div) {
       return;
     }
-    this.pageDiv = null;
     this.annotationEditorLayer.destroy();
-    this.div.remove();
   }
   hide() {
     if (!this.div) {
@@ -1456,7 +1461,7 @@ class AnnotationEditorLayerBuilder {
     this.div.hidden = true;
   }
   show() {
-    if (!this.div || this.annotationEditorLayer.isEmpty) {
+    if (!this.div || this.annotationEditorLayer.isInvisible) {
       return;
     }
     this.div.hidden = false;
@@ -1468,23 +1473,23 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 735:
+/***/ 707:
 /***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   AnnotationLayerBuilder: () => (/* binding */ AnnotationLayerBuilder)
 /* harmony export */ });
-/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(869);
-/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(927);
+/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(603);
+/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(256);
 var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__]);
 pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = (__webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__)[0];
 
 
 class AnnotationLayerBuilder {
-  #onPresentationModeChanged = null;
+  #onAppend = null;
+  #eventAbortController = null;
   constructor({
-    pageDiv,
     pdfPage,
     linkService,
     downloadManager,
@@ -1495,9 +1500,10 @@ class AnnotationLayerBuilder {
     hasJSActionsPromise = null,
     fieldObjectsPromise = null,
     annotationCanvasMap = null,
-    accessibilityManager = null
+    accessibilityManager = null,
+    annotationEditorUIManager = null,
+    onAppend = null
   }) {
-    this.pageDiv = pageDiv;
     this.pdfPage = pdfPage;
     this.linkService = linkService;
     this.downloadManager = downloadManager;
@@ -1509,6 +1515,8 @@ class AnnotationLayerBuilder {
     this._fieldObjectsPromise = fieldObjectsPromise || Promise.resolve(null);
     this._annotationCanvasMap = annotationCanvasMap;
     this._accessibilityManager = accessibilityManager;
+    this._annotationEditorUIManager = annotationEditorUIManager;
+    this.#onAppend = onAppend;
     this.annotationLayer = null;
     this.div = null;
     this._cancelled = false;
@@ -1534,7 +1542,7 @@ class AnnotationLayerBuilder {
     }
     const div = this.div = document.createElement("div");
     div.className = "annotationLayer";
-    this.pageDiv.append(div);
+    this.#onAppend?.(div);
     if (annotations.length === 0) {
       this.hide();
       return;
@@ -1543,6 +1551,7 @@ class AnnotationLayerBuilder {
       div,
       accessibilityManager: this._accessibilityManager,
       annotationCanvasMap: this._annotationCanvasMap,
+      annotationEditorUIManager: this._annotationEditorUIManager,
       page: this.pdfPage,
       viewport: viewport.clone({
         dontFlip: true
@@ -1562,19 +1571,19 @@ class AnnotationLayerBuilder {
     if (this.linkService.isInPresentationMode) {
       this.#updatePresentationModeState(_ui_utils_js__WEBPACK_IMPORTED_MODULE_1__.PresentationModeState.FULLSCREEN);
     }
-    if (!this.#onPresentationModeChanged) {
-      this.#onPresentationModeChanged = evt => {
+    if (!this.#eventAbortController) {
+      this.#eventAbortController = new AbortController();
+      this._eventBus?._on("presentationmodechanged", evt => {
         this.#updatePresentationModeState(evt.state);
-      };
-      this._eventBus?._on("presentationmodechanged", this.#onPresentationModeChanged);
+      }, {
+        signal: this.#eventAbortController.signal
+      });
     }
   }
   cancel() {
     this._cancelled = true;
-    if (this.#onPresentationModeChanged) {
-      this._eventBus?._off("presentationmodechanged", this.#onPresentationModeChanged);
-      this.#onPresentationModeChanged = null;
-    }
+    this.#eventAbortController?.abort();
+    this.#eventAbortController = null;
   }
   hide() {
     if (!this.div) {
@@ -1610,15 +1619,15 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 961:
+/***/ 840:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   compatibilityParams: () => (/* binding */ compatibilityParams)
+/* harmony export */   AppOptions: () => (/* binding */ AppOptions)
 /* harmony export */ });
-/* unused harmony exports AppOptions, OptionKind */
-const compatibilityParams = Object.create(null);
+/* unused harmony export OptionKind */
 {
+  var compatibilityParams = Object.create(null);
   const userAgent = navigator.userAgent || "";
   const platform = navigator.platform || "";
   const maxTouchPoints = navigator.maxTouchPoints || 1;
@@ -1643,6 +1652,10 @@ const defaultOptions = {
     kind: OptionKind.BROWSER + OptionKind.API
   },
   isInAutomation: {
+    value: false,
+    kind: OptionKind.BROWSER
+  },
+  supportsCaretBrowsingMode: {
     value: false,
     kind: OptionKind.BROWSER
   },
@@ -1678,6 +1691,10 @@ const defaultOptions = {
     value: 0,
     kind: OptionKind.VIEWER + OptionKind.PREFERENCE
   },
+  debuggerSrc: {
+    value: "./debugger.mjs",
+    kind: OptionKind.VIEWER
+  },
   defaultZoomDelay: {
     value: 400,
     kind: OptionKind.VIEWER + OptionKind.PREFERENCE
@@ -1694,6 +1711,18 @@ const defaultOptions = {
     value: false,
     kind: OptionKind.VIEWER + OptionKind.PREFERENCE
   },
+  enableHighlightEditor: {
+    value: false,
+    kind: OptionKind.VIEWER + OptionKind.PREFERENCE
+  },
+  enableHighlightFloatingButton: {
+    value: false,
+    kind: OptionKind.VIEWER + OptionKind.PREFERENCE
+  },
+  enableML: {
+    value: false,
+    kind: OptionKind.VIEWER + OptionKind.PREFERENCE
+  },
   enablePermissions: {
     value: false,
     kind: OptionKind.VIEWER + OptionKind.PREFERENCE
@@ -1706,12 +1735,20 @@ const defaultOptions = {
     value: true,
     kind: OptionKind.VIEWER + OptionKind.PREFERENCE
   },
+  enableStampEditor: {
+    value: true,
+    kind: OptionKind.VIEWER + OptionKind.PREFERENCE
+  },
   externalLinkRel: {
     value: "noopener noreferrer nofollow",
     kind: OptionKind.VIEWER
   },
   externalLinkTarget: {
     value: 0,
+    kind: OptionKind.VIEWER + OptionKind.PREFERENCE
+  },
+  highlightEditorColors: {
+    value: "yellow=#FFFF98,green=#53FFBC,blue=#80EBFF,pink=#FFCBE6,red=#FF4F5F",
     kind: OptionKind.VIEWER + OptionKind.PREFERENCE
   },
   historyUpdateUrl: {
@@ -1727,7 +1764,7 @@ const defaultOptions = {
     kind: OptionKind.VIEWER
   },
   maxCanvasPixels: {
-    value: 16777216,
+    value: 2 ** 25,
     kind: OptionKind.VIEWER
   },
   forcePageColors: {
@@ -1840,16 +1877,20 @@ const defaultOptions = {
   }
 };
 {
+  defaultOptions.defaultUrl = {
+    value: "compressed.tracemonkey-pldi-09.pdf",
+    kind: OptionKind.VIEWER
+  };
+  defaultOptions.sandboxBundleSrc = {
+    value: "../build/pdf.sandbox.mjs",
+    kind: OptionKind.VIEWER
+  };
   defaultOptions.viewerCssTheme = {
     value: 0,
     kind: OptionKind.VIEWER + OptionKind.PREFERENCE
   };
 }
 {
-  defaultOptions.defaultUrl = {
-    value: "compressed.tracemonkey-pldi-09.pdf",
-    kind: OptionKind.VIEWER
-  };
   defaultOptions.disablePreferences = {
     value: false,
     kind: OptionKind.VIEWER
@@ -1858,38 +1899,28 @@ const defaultOptions = {
     value: navigator.language || "en-US",
     kind: OptionKind.VIEWER
   };
-  defaultOptions.sandboxBundleSrc = {
-    value: "../build/pdf.sandbox.mjs",
-    kind: OptionKind.VIEWER
-  };
 }
 const userOptions = Object.create(null);
+{
+  for (const name in compatibilityParams) {
+    userOptions[name] = compatibilityParams[name];
+  }
+}
 class AppOptions {
   constructor() {
     throw new Error("Cannot initialize AppOptions.");
   }
   static get(name) {
-    const userOption = userOptions[name];
-    if (userOption !== undefined) {
-      return userOption;
-    }
-    const defaultOption = defaultOptions[name];
-    if (defaultOption !== undefined) {
-      return compatibilityParams[name] ?? defaultOption.value;
-    }
-    return undefined;
+    return userOptions[name] ?? defaultOptions[name]?.value ?? undefined;
   }
-  static getAll(kind = null) {
+  static getAll(kind = null, defaultOnly = false) {
     const options = Object.create(null);
     for (const name in defaultOptions) {
       const defaultOption = defaultOptions[name];
-      if (kind) {
-        if (!(kind & defaultOption.kind)) {
-          continue;
-        }
+      if (kind && !(kind & defaultOption.kind)) {
+        continue;
       }
-      const userOption = userOptions[name];
-      options[name] = userOption !== undefined ? userOption : compatibilityParams[name] ?? defaultOption.value;
+      options[name] = defaultOnly ? defaultOption.value : userOptions[name] ?? defaultOption.value;
     }
     return options;
   }
@@ -1901,8 +1932,12 @@ class AppOptions {
       if (this.get("disablePreferences")) {
         return;
       }
-      if (Object.keys(userOptions).length) {
+      for (const name in userOptions) {
+        if (compatibilityParams[name] !== undefined) {
+          continue;
+        }
         console.warn("setAll: The Preferences may override manually set AppOptions; " + 'please use the "disablePreferences"-option in order to prevent that.');
+        break;
       }
     }
     for (const name in options) {
@@ -1911,24 +1946,27 @@ class AppOptions {
   }
   static remove(name) {
     delete userOptions[name];
+    const val = compatibilityParams[name];
+    if (val !== undefined) {
+      userOptions[name] = val;
+    }
   }
 }
 
 
 /***/ }),
 
-/***/ 397:
+/***/ 544:
 /***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   DownloadManager: () => (/* binding */ DownloadManager)
 /* harmony export */ });
-/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(869);
+/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(603);
 var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__]);
 pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = (__webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__)[0];
 
-;
 function download(blobUrl, filename) {
   const a = document.createElement("a");
   if (!a.click) {
@@ -1975,7 +2013,52 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 554:
+/***/ 88:
+/***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   DrawLayerBuilder: () => (/* binding */ DrawLayerBuilder)
+/* harmony export */ });
+/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(603);
+var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__]);
+pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = (__webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__)[0];
+
+class DrawLayerBuilder {
+  #drawLayer = null;
+  constructor(options) {
+    this.pageIndex = options.pageIndex;
+  }
+  async render(intent = "display") {
+    if (intent !== "display" || this.#drawLayer || this._cancelled) {
+      return;
+    }
+    this.#drawLayer = new pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.DrawLayer({
+      pageIndex: this.pageIndex
+    });
+  }
+  cancel() {
+    this._cancelled = true;
+    if (!this.#drawLayer) {
+      return;
+    }
+    this.#drawLayer.destroy();
+    this.#drawLayer = null;
+  }
+  setParent(parent) {
+    this.#drawLayer?.setParent(parent);
+  }
+  getDrawLayer() {
+    return this.#drawLayer;
+  }
+}
+
+__webpack_async_result__();
+} catch(e) { __webpack_async_result__(e); } });
+
+/***/ }),
+
+/***/ 656:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
@@ -1987,49 +2070,42 @@ const WaitOnType = {
   EVENT: "event",
   TIMEOUT: "timeout"
 };
-function waitOnEventOrTimeout({
+async function waitOnEventOrTimeout({
   target,
   name,
   delay = 0
 }) {
-  return new Promise(function (resolve, reject) {
-    if (typeof target !== "object" || !(name && typeof name === "string") || !(Number.isInteger(delay) && delay >= 0)) {
-      throw new Error("waitOnEventOrTimeout - invalid parameters.");
-    }
-    function handler(type) {
-      if (target instanceof EventBus) {
-        target._off(name, eventHandler);
-      } else {
-        target.removeEventListener(name, eventHandler);
-      }
-      if (timeout) {
-        clearTimeout(timeout);
-      }
-      resolve(type);
-    }
-    const eventHandler = handler.bind(null, WaitOnType.EVENT);
-    if (target instanceof EventBus) {
-      target._on(name, eventHandler);
-    } else {
-      target.addEventListener(name, eventHandler);
-    }
-    const timeoutHandler = handler.bind(null, WaitOnType.TIMEOUT);
-    const timeout = setTimeout(timeoutHandler, delay);
+  if (typeof target !== "object" || !(name && typeof name === "string") || !(Number.isInteger(delay) && delay >= 0)) {
+    throw new Error("waitOnEventOrTimeout - invalid parameters.");
+  }
+  const {
+    promise,
+    resolve
+  } = Promise.withResolvers();
+  const ac = new AbortController();
+  function handler(type) {
+    ac.abort();
+    clearTimeout(timeout);
+    resolve(type);
+  }
+  const evtMethod = target instanceof EventBus ? "_on" : "addEventListener";
+  target[evtMethod](name, handler.bind(null, WaitOnType.EVENT), {
+    signal: ac.signal
   });
+  const timeout = setTimeout(handler.bind(null, WaitOnType.TIMEOUT), delay);
+  return promise;
 }
 class EventBus {
   #listeners = Object.create(null);
   on(eventName, listener, options = null) {
     this._on(eventName, listener, {
       external: true,
-      once: options?.once
+      once: options?.once,
+      signal: options?.signal
     });
   }
   off(eventName, listener, options = null) {
-    this._off(eventName, listener, {
-      external: true,
-      once: options?.once
-    });
+    this._off(eventName, listener);
   }
   dispatch(eventName, data) {
     const eventListeners = this.#listeners[eventName];
@@ -2059,11 +2135,25 @@ class EventBus {
     }
   }
   _on(eventName, listener, options = null) {
+    let rmAbort = null;
+    if (options?.signal instanceof AbortSignal) {
+      const {
+        signal
+      } = options;
+      if (signal.aborted) {
+        console.error("Cannot use an `aborted` signal.");
+        return;
+      }
+      const onAbort = () => this._off(eventName, listener);
+      rmAbort = () => signal.removeEventListener("abort", onAbort);
+      signal.addEventListener("abort", onAbort);
+    }
     const eventListeners = this.#listeners[eventName] ||= [];
     eventListeners.push({
       listener,
       external: options?.external === true,
-      once: options?.once === true
+      once: options?.once === true,
+      rmAbort
     });
   }
   _off(eventName, listener, options = null) {
@@ -2072,7 +2162,9 @@ class EventBus {
       return;
     }
     for (let i = 0, ii = eventListeners.length; i < ii; i++) {
-      if (eventListeners[i].listener === listener) {
+      const evt = eventListeners[i];
+      if (evt.listener === listener) {
+        evt.rmAbort?.();
         eventListeners.splice(i, 1);
         return;
       }
@@ -2088,7 +2180,7 @@ class AutomationEventBus extends (/* unused pure expression or super */ null && 
 
 /***/ }),
 
-/***/ 170:
+/***/ 289:
 /***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
@@ -2096,13 +2188,13 @@ __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 /* harmony export */   GenericScripting: () => (/* binding */ GenericScripting),
 /* harmony export */   docProperties: () => (/* binding */ docProperties)
 /* harmony export */ });
-/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(869);
+/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(603);
 var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__]);
 pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = (__webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__)[0];
 
 async function docProperties(pdfDocument) {
   const url = "",
-    baseUrl = url.split("#")[0];
+    baseUrl = url.split("#", 1)[0];
   let {
     info,
     metadata,
@@ -2129,7 +2221,7 @@ async function docProperties(pdfDocument) {
 class GenericScripting {
   constructor(sandboxBundleSrc) {
     this._ready = new Promise((resolve, reject) => {
-      const sandbox = import(/* webpackIgnore: true */ sandboxBundleSrc);
+      const sandbox = import( /*webpackIgnore: true*/sandboxBundleSrc);
       sandbox.then(pdfjsSandbox => {
         resolve(pdfjsSandbox.QuickJSSandbox());
       }).catch(reject);
@@ -2154,29 +2246,39 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 450:
+/***/ 410:
 /***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   GenericL10n: () => (/* binding */ GenericL10n)
 /* harmony export */ });
-/* harmony import */ var fluent_bundle__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(759);
-/* harmony import */ var fluent_dom__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(275);
-/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(869);
-/* harmony import */ var _l10n_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(65);
+/* harmony import */ var fluent_bundle__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(588);
+/* harmony import */ var fluent_dom__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(273);
+/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(603);
+/* harmony import */ var _l10n_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(693);
 var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_2__]);
 pdfjs_lib__WEBPACK_IMPORTED_MODULE_2__ = (__webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__)[0];
 
 
 
 
+function createBundle(lang, text) {
+  const resource = new fluent_bundle__WEBPACK_IMPORTED_MODULE_0__.FluentResource(text);
+  const bundle = new fluent_bundle__WEBPACK_IMPORTED_MODULE_0__.FluentBundle(lang);
+  const errors = bundle.addResource(resource);
+  if (errors.length) {
+    console.error("L10n errors", errors);
+  }
+  return bundle;
+}
 class GenericL10n extends _l10n_js__WEBPACK_IMPORTED_MODULE_3__.L10n {
   constructor(lang) {
     super({
       lang
     });
-    this._setL10n(new fluent_dom__WEBPACK_IMPORTED_MODULE_1__.DOMLocalization([], GenericL10n.#generateBundles.bind(GenericL10n, "en-us", this.getLanguage())));
+    const generateBundles = !lang ? GenericL10n.#generateBundlesFallback.bind(GenericL10n, this.getLanguage()) : GenericL10n.#generateBundles.bind(GenericL10n, "en-us", this.getLanguage());
+    this._setL10n(new fluent_dom__WEBPACK_IMPORTED_MODULE_1__.DOMLocalization([], generateBundles));
   }
   static async *#generateBundles(defaultLang, baseLang) {
     const {
@@ -2196,6 +2298,9 @@ class GenericL10n extends _l10n_js__WEBPACK_IMPORTED_MODULE_3__.L10n {
       if (bundle) {
         yield bundle;
       }
+      if (lang === "en-us") {
+        yield this.#createBundleFallback(lang);
+      }
     }
   }
   static async #createBundle(lang, baseURL, paths) {
@@ -2205,23 +2310,30 @@ class GenericL10n extends _l10n_js__WEBPACK_IMPORTED_MODULE_3__.L10n {
     }
     const url = new URL(path, baseURL);
     const text = await (0,pdfjs_lib__WEBPACK_IMPORTED_MODULE_2__.fetchData)(url, "text");
-    const resource = new fluent_bundle__WEBPACK_IMPORTED_MODULE_0__.FluentResource(text);
-    const bundle = new fluent_bundle__WEBPACK_IMPORTED_MODULE_0__.FluentBundle(lang);
-    const errors = bundle.addResource(resource);
-    if (errors.length) {
-      console.error("L10n errors", errors);
-    }
-    return bundle;
+    return createBundle(lang, text);
   }
   static async #getPaths() {
-    const {
-      href
-    } = document.querySelector(`link[type="application/l10n"]`);
-    const paths = await (0,pdfjs_lib__WEBPACK_IMPORTED_MODULE_2__.fetchData)(href, "json");
+    try {
+      const {
+        href
+      } = document.querySelector(`link[type="application/l10n"]`);
+      const paths = await (0,pdfjs_lib__WEBPACK_IMPORTED_MODULE_2__.fetchData)(href, "json");
+      return {
+        baseURL: href.replace(/[^/]*$/, "") || "./",
+        paths
+      };
+    } catch {}
     return {
-      baseURL: href.replace(/[^/]*$/, "") || "./",
-      paths
+      baseURL: "./",
+      paths: Object.create(null)
     };
+  }
+  static async *#generateBundlesFallback(lang) {
+    yield this.#createBundleFallback(lang);
+  }
+  static async #createBundleFallback(lang) {
+    const text = "pdfjs-previous-button =\n    .title = Previous Page\npdfjs-previous-button-label = Previous\npdfjs-next-button =\n    .title = Next Page\npdfjs-next-button-label = Next\npdfjs-page-input =\n    .title = Page\npdfjs-of-pages = of { $pagesCount }\npdfjs-page-of-pages = ({ $pageNumber } of { $pagesCount })\npdfjs-zoom-out-button =\n    .title = Zoom Out\npdfjs-zoom-out-button-label = Zoom Out\npdfjs-zoom-in-button =\n    .title = Zoom In\npdfjs-zoom-in-button-label = Zoom In\npdfjs-zoom-select =\n    .title = Zoom\npdfjs-presentation-mode-button =\n    .title = Switch to Presentation Mode\npdfjs-presentation-mode-button-label = Presentation Mode\npdfjs-open-file-button =\n    .title = Open File\npdfjs-open-file-button-label = Open\npdfjs-print-button =\n    .title = Print\npdfjs-print-button-label = Print\npdfjs-save-button =\n    .title = Save\npdfjs-save-button-label = Save\npdfjs-download-button =\n    .title = Download\npdfjs-download-button-label = Download\npdfjs-bookmark-button =\n    .title = Current Page (View URL from Current Page)\npdfjs-bookmark-button-label = Current Page\npdfjs-tools-button =\n    .title = Tools\npdfjs-tools-button-label = Tools\npdfjs-first-page-button =\n    .title = Go to First Page\npdfjs-first-page-button-label = Go to First Page\npdfjs-last-page-button =\n    .title = Go to Last Page\npdfjs-last-page-button-label = Go to Last Page\npdfjs-page-rotate-cw-button =\n    .title = Rotate Clockwise\npdfjs-page-rotate-cw-button-label = Rotate Clockwise\npdfjs-page-rotate-ccw-button =\n    .title = Rotate Counterclockwise\npdfjs-page-rotate-ccw-button-label = Rotate Counterclockwise\npdfjs-cursor-text-select-tool-button =\n    .title = Enable Text Selection Tool\npdfjs-cursor-text-select-tool-button-label = Text Selection Tool\npdfjs-cursor-hand-tool-button =\n    .title = Enable Hand Tool\npdfjs-cursor-hand-tool-button-label = Hand Tool\npdfjs-scroll-page-button =\n    .title = Use Page Scrolling\npdfjs-scroll-page-button-label = Page Scrolling\npdfjs-scroll-vertical-button =\n    .title = Use Vertical Scrolling\npdfjs-scroll-vertical-button-label = Vertical Scrolling\npdfjs-scroll-horizontal-button =\n    .title = Use Horizontal Scrolling\npdfjs-scroll-horizontal-button-label = Horizontal Scrolling\npdfjs-scroll-wrapped-button =\n    .title = Use Wrapped Scrolling\npdfjs-scroll-wrapped-button-label = Wrapped Scrolling\npdfjs-spread-none-button =\n    .title = Do not join page spreads\npdfjs-spread-none-button-label = No Spreads\npdfjs-spread-odd-button =\n    .title = Join page spreads starting with odd-numbered pages\npdfjs-spread-odd-button-label = Odd Spreads\npdfjs-spread-even-button =\n    .title = Join page spreads starting with even-numbered pages\npdfjs-spread-even-button-label = Even Spreads\npdfjs-document-properties-button =\n    .title = Document Properties\u2026\npdfjs-document-properties-button-label = Document Properties\u2026\npdfjs-document-properties-file-name = File name:\npdfjs-document-properties-file-size = File size:\npdfjs-document-properties-kb = { $size_kb } KB ({ $size_b } bytes)\npdfjs-document-properties-mb = { $size_mb } MB ({ $size_b } bytes)\npdfjs-document-properties-title = Title:\npdfjs-document-properties-author = Author:\npdfjs-document-properties-subject = Subject:\npdfjs-document-properties-keywords = Keywords:\npdfjs-document-properties-creation-date = Creation Date:\npdfjs-document-properties-modification-date = Modification Date:\npdfjs-document-properties-date-string = { $date }, { $time }\npdfjs-document-properties-creator = Creator:\npdfjs-document-properties-producer = PDF Producer:\npdfjs-document-properties-version = PDF Version:\npdfjs-document-properties-page-count = Page Count:\npdfjs-document-properties-page-size = Page Size:\npdfjs-document-properties-page-size-unit-inches = in\npdfjs-document-properties-page-size-unit-millimeters = mm\npdfjs-document-properties-page-size-orientation-portrait = portrait\npdfjs-document-properties-page-size-orientation-landscape = landscape\npdfjs-document-properties-page-size-name-a-three = A3\npdfjs-document-properties-page-size-name-a-four = A4\npdfjs-document-properties-page-size-name-letter = Letter\npdfjs-document-properties-page-size-name-legal = Legal\npdfjs-document-properties-page-size-dimension-string = { $width } \xD7 { $height } { $unit } ({ $orientation })\npdfjs-document-properties-page-size-dimension-name-string = { $width } \xD7 { $height } { $unit } ({ $name }, { $orientation })\npdfjs-document-properties-linearized = Fast Web View:\npdfjs-document-properties-linearized-yes = Yes\npdfjs-document-properties-linearized-no = No\npdfjs-document-properties-close-button = Close\npdfjs-print-progress-message = Preparing document for printing\u2026\npdfjs-print-progress-percent = { $progress }%\npdfjs-print-progress-close-button = Cancel\npdfjs-printing-not-supported = Warning: Printing is not fully supported by this browser.\npdfjs-printing-not-ready = Warning: The PDF is not fully loaded for printing.\npdfjs-toggle-sidebar-button =\n    .title = Toggle Sidebar\npdfjs-toggle-sidebar-notification-button =\n    .title = Toggle Sidebar (document contains outline/attachments/layers)\npdfjs-toggle-sidebar-button-label = Toggle Sidebar\npdfjs-document-outline-button =\n    .title = Show Document Outline (double-click to expand/collapse all items)\npdfjs-document-outline-button-label = Document Outline\npdfjs-attachments-button =\n    .title = Show Attachments\npdfjs-attachments-button-label = Attachments\npdfjs-layers-button =\n    .title = Show Layers (double-click to reset all layers to the default state)\npdfjs-layers-button-label = Layers\npdfjs-thumbs-button =\n    .title = Show Thumbnails\npdfjs-thumbs-button-label = Thumbnails\npdfjs-current-outline-item-button =\n    .title = Find Current Outline Item\npdfjs-current-outline-item-button-label = Current Outline Item\npdfjs-findbar-button =\n    .title = Find in Document\npdfjs-findbar-button-label = Find\npdfjs-additional-layers = Additional Layers\npdfjs-thumb-page-title =\n    .title = Page { $page }\npdfjs-thumb-page-canvas =\n    .aria-label = Thumbnail of Page { $page }\npdfjs-find-input =\n    .title = Find\n    .placeholder = Find in document\u2026\npdfjs-find-previous-button =\n    .title = Find the previous occurrence of the phrase\npdfjs-find-previous-button-label = Previous\npdfjs-find-next-button =\n    .title = Find the next occurrence of the phrase\npdfjs-find-next-button-label = Next\npdfjs-find-highlight-checkbox = Highlight All\npdfjs-find-match-case-checkbox-label = Match Case\npdfjs-find-match-diacritics-checkbox-label = Match Diacritics\npdfjs-find-entire-word-checkbox-label = Whole Words\npdfjs-find-reached-top = Reached top of document, continued from bottom\npdfjs-find-reached-bottom = Reached end of document, continued from top\npdfjs-find-match-count =\n    { $total ->\n        [one] { $current } of { $total } match\n       *[other] { $current } of { $total } matches\n    }\npdfjs-find-match-count-limit =\n    { $limit ->\n        [one] More than { $limit } match\n       *[other] More than { $limit } matches\n    }\npdfjs-find-not-found = Phrase not found\npdfjs-page-scale-width = Page Width\npdfjs-page-scale-fit = Page Fit\npdfjs-page-scale-auto = Automatic Zoom\npdfjs-page-scale-actual = Actual Size\npdfjs-page-scale-percent = { $scale }%\npdfjs-page-landmark =\n    .aria-label = Page { $page }\npdfjs-loading-error = An error occurred while loading the PDF.\npdfjs-invalid-file-error = Invalid or corrupted PDF file.\npdfjs-missing-file-error = Missing PDF file.\npdfjs-unexpected-response-error = Unexpected server response.\npdfjs-rendering-error = An error occurred while rendering the page.\npdfjs-annotation-date-string = { $date }, { $time }\npdfjs-text-annotation-type =\n    .alt = [{ $type } Annotation]\npdfjs-password-label = Enter the password to open this PDF file.\npdfjs-password-invalid = Invalid password. Please try again.\npdfjs-password-ok-button = OK\npdfjs-password-cancel-button = Cancel\npdfjs-web-fonts-disabled = Web fonts are disabled: unable to use embedded PDF fonts.\npdfjs-editor-free-text-button =\n    .title = Text\npdfjs-editor-free-text-button-label = Text\npdfjs-editor-ink-button =\n    .title = Draw\npdfjs-editor-ink-button-label = Draw\npdfjs-editor-stamp-button =\n    .title = Add or edit images\npdfjs-editor-stamp-button-label = Add or edit images\npdfjs-editor-highlight-button =\n    .title = Highlight\npdfjs-editor-highlight-button-label = Highlight\npdfjs-highlight-floating-button1 =\n    .title = Highlight\n    .aria-label = Highlight\npdfjs-highlight-floating-button-label = Highlight\npdfjs-editor-remove-ink-button =\n    .title = Remove drawing\npdfjs-editor-remove-freetext-button =\n    .title = Remove text\npdfjs-editor-remove-stamp-button =\n    .title = Remove image\npdfjs-editor-remove-highlight-button =\n    .title = Remove highlight\npdfjs-editor-free-text-color-input = Color\npdfjs-editor-free-text-size-input = Size\npdfjs-editor-ink-color-input = Color\npdfjs-editor-ink-thickness-input = Thickness\npdfjs-editor-ink-opacity-input = Opacity\npdfjs-editor-stamp-add-image-button =\n    .title = Add image\npdfjs-editor-stamp-add-image-button-label = Add image\npdfjs-editor-free-highlight-thickness-input = Thickness\npdfjs-editor-free-highlight-thickness-title =\n    .title = Change thickness when highlighting items other than text\npdfjs-free-text =\n    .aria-label = Text Editor\npdfjs-free-text-default-content = Start typing\u2026\npdfjs-ink =\n    .aria-label = Draw Editor\npdfjs-ink-canvas =\n    .aria-label = User-created image\npdfjs-editor-alt-text-button-label = Alt text\npdfjs-editor-alt-text-edit-button-label = Edit alt text\npdfjs-editor-alt-text-dialog-label = Choose an option\npdfjs-editor-alt-text-dialog-description = Alt text (alternative text) helps when people can\u2019t see the image or when it doesn\u2019t load.\npdfjs-editor-alt-text-add-description-label = Add a description\npdfjs-editor-alt-text-add-description-description = Aim for 1-2 sentences that describe the subject, setting, or actions.\npdfjs-editor-alt-text-mark-decorative-label = Mark as decorative\npdfjs-editor-alt-text-mark-decorative-description = This is used for ornamental images, like borders or watermarks.\npdfjs-editor-alt-text-cancel-button = Cancel\npdfjs-editor-alt-text-save-button = Save\npdfjs-editor-alt-text-decorative-tooltip = Marked as decorative\npdfjs-editor-alt-text-textarea =\n    .placeholder = For example, \u201CA young man sits down at a table to eat a meal\u201D\npdfjs-editor-resizer-label-top-left = Top left corner \u2014 resize\npdfjs-editor-resizer-label-top-middle = Top middle \u2014 resize\npdfjs-editor-resizer-label-top-right = Top right corner \u2014 resize\npdfjs-editor-resizer-label-middle-right = Middle right \u2014 resize\npdfjs-editor-resizer-label-bottom-right = Bottom right corner \u2014 resize\npdfjs-editor-resizer-label-bottom-middle = Bottom middle \u2014 resize\npdfjs-editor-resizer-label-bottom-left = Bottom left corner \u2014 resize\npdfjs-editor-resizer-label-middle-left = Middle left \u2014 resize\npdfjs-editor-highlight-colorpicker-label = Highlight color\npdfjs-editor-colorpicker-button =\n    .title = Change color\npdfjs-editor-colorpicker-dropdown =\n    .aria-label = Color choices\npdfjs-editor-colorpicker-yellow =\n    .title = Yellow\npdfjs-editor-colorpicker-green =\n    .title = Green\npdfjs-editor-colorpicker-blue =\n    .title = Blue\npdfjs-editor-colorpicker-pink =\n    .title = Pink\npdfjs-editor-colorpicker-red =\n    .title = Red\npdfjs-editor-highlight-show-all-button-label = Show all\npdfjs-editor-highlight-show-all-button =\n    .title = Show all";
+    return createBundle(lang, text);
   }
 }
 
@@ -2230,12 +2342,13 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 65:
+/***/ 693:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   L10n: () => (/* binding */ L10n)
 /* harmony export */ });
+/* unused harmony export GenericL10n */
 class L10n {
   #dir;
   #lang;
@@ -2308,88 +2421,98 @@ class L10n {
     return ["ar", "he", "fa", "ps", "ur"].includes(shortCode);
   }
 }
+const GenericL10n = null;
 
 
 /***/ }),
 
-/***/ 910:
-/***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
-
-__webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   NullL10n: () => (/* binding */ NullL10n)
-/* harmony export */ });
-/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(869);
-/* harmony import */ var fluent_bundle__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(759);
-/* harmony import */ var fluent_dom__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(275);
-/* harmony import */ var _l10n_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(65);
-var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__]);
-pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = (__webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__)[0];
+/***/ 814:
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 
+// EXPORTS
+__webpack_require__.d(__webpack_exports__, {
+  FindState: () => (/* binding */ FindState),
+  PDFFindController: () => (/* binding */ PDFFindController)
+});
 
-
-class ConstL10n extends _l10n_js__WEBPACK_IMPORTED_MODULE_3__.L10n {
-  constructor(lang) {
-    super({
-      lang
-    });
-    this._setL10n(new fluent_dom__WEBPACK_IMPORTED_MODULE_2__.DOMLocalization([], ConstL10n.#generateBundles.bind(ConstL10n, lang)));
-  }
-  static async *#generateBundles(lang) {
-    const text = 'pdfjs-previous-button =\n    .title = Previous Page\npdfjs-previous-button-label = Previous\npdfjs-next-button =\n    .title = Next Page\npdfjs-next-button-label = Next\npdfjs-page-input =\n    .title = Page\npdfjs-of-pages = of { $pagesCount }\npdfjs-page-of-pages = ({ $pageNumber } of { $pagesCount })\npdfjs-zoom-out-button =\n    .title = Zoom Out\npdfjs-zoom-out-button-label = Zoom Out\npdfjs-zoom-in-button =\n    .title = Zoom In\npdfjs-zoom-in-button-label = Zoom In\npdfjs-zoom-select =\n    .title = Zoom\npdfjs-presentation-mode-button =\n    .title = Switch to Presentation Mode\npdfjs-presentation-mode-button-label = Presentation Mode\npdfjs-open-file-button =\n    .title = Open File\npdfjs-open-file-button-label = Open\npdfjs-print-button =\n    .title = Print\npdfjs-print-button-label = Print\npdfjs-save-button =\n    .title = Save\npdfjs-save-button-label = Save\npdfjs-download-button =\n    .title = Download\npdfjs-download-button-label = Download\npdfjs-bookmark-button =\n    .title = Current Page (View URL from Current Page)\npdfjs-bookmark-button-label = Current Page\npdfjs-open-in-app-button =\n    .title = Open in app\npdfjs-open-in-app-button-label = Open in app\npdfjs-tools-button =\n    .title = Tools\npdfjs-tools-button-label = Tools\npdfjs-first-page-button =\n    .title = Go to First Page\npdfjs-first-page-button-label = Go to First Page\npdfjs-last-page-button =\n    .title = Go to Last Page\npdfjs-last-page-button-label = Go to Last Page\npdfjs-page-rotate-cw-button =\n    .title = Rotate Clockwise\npdfjs-page-rotate-cw-button-label = Rotate Clockwise\npdfjs-page-rotate-ccw-button =\n    .title = Rotate Counterclockwise\npdfjs-page-rotate-ccw-button-label = Rotate Counterclockwise\npdfjs-cursor-text-select-tool-button =\n    .title = Enable Text Selection Tool\npdfjs-cursor-text-select-tool-button-label = Text Selection Tool\npdfjs-cursor-hand-tool-button =\n    .title = Enable Hand Tool\npdfjs-cursor-hand-tool-button-label = Hand Tool\npdfjs-scroll-page-button =\n    .title = Use Page Scrolling\npdfjs-scroll-page-button-label = Page Scrolling\npdfjs-scroll-vertical-button =\n    .title = Use Vertical Scrolling\npdfjs-scroll-vertical-button-label = Vertical Scrolling\npdfjs-scroll-horizontal-button =\n    .title = Use Horizontal Scrolling\npdfjs-scroll-horizontal-button-label = Horizontal Scrolling\npdfjs-scroll-wrapped-button =\n    .title = Use Wrapped Scrolling\npdfjs-scroll-wrapped-button-label = Wrapped Scrolling\npdfjs-spread-none-button =\n    .title = Do not join page spreads\npdfjs-spread-none-button-label = No Spreads\npdfjs-spread-odd-button =\n    .title = Join page spreads starting with odd-numbered pages\npdfjs-spread-odd-button-label = Odd Spreads\npdfjs-spread-even-button =\n    .title = Join page spreads starting with even-numbered pages\npdfjs-spread-even-button-label = Even Spreads\npdfjs-document-properties-button =\n    .title = Document Properties\u2026\npdfjs-document-properties-button-label = Document Properties\u2026\npdfjs-document-properties-file-name = File name:\npdfjs-document-properties-file-size = File size:\npdfjs-document-properties-kb = { $size_kb } KB ({ $size_b } bytes)\npdfjs-document-properties-mb = { $size_mb } MB ({ $size_b } bytes)\npdfjs-document-properties-title = Title:\npdfjs-document-properties-author = Author:\npdfjs-document-properties-subject = Subject:\npdfjs-document-properties-keywords = Keywords:\npdfjs-document-properties-creation-date = Creation Date:\npdfjs-document-properties-modification-date = Modification Date:\npdfjs-document-properties-date-string = { $date }, { $time }\npdfjs-document-properties-creator = Creator:\npdfjs-document-properties-producer = PDF Producer:\npdfjs-document-properties-version = PDF Version:\npdfjs-document-properties-page-count = Page Count:\npdfjs-document-properties-page-size = Page Size:\npdfjs-document-properties-page-size-unit-inches = in\npdfjs-document-properties-page-size-unit-millimeters = mm\npdfjs-document-properties-page-size-orientation-portrait = portrait\npdfjs-document-properties-page-size-orientation-landscape = landscape\npdfjs-document-properties-page-size-name-a-three = A3\npdfjs-document-properties-page-size-name-a-four = A4\npdfjs-document-properties-page-size-name-letter = Letter\npdfjs-document-properties-page-size-name-legal = Legal\npdfjs-document-properties-page-size-dimension-string = { $width } \xD7 { $height } { $unit } ({ $orientation })\npdfjs-document-properties-page-size-dimension-name-string = { $width } \xD7 { $height } { $unit } ({ $name }, { $orientation })\npdfjs-document-properties-linearized = Fast Web View:\npdfjs-document-properties-linearized-yes = Yes\npdfjs-document-properties-linearized-no = No\npdfjs-document-properties-close-button = Close\npdfjs-print-progress-message = Preparing document for printing\u2026\npdfjs-print-progress-percent = { $progress }%\npdfjs-print-progress-close-button = Cancel\npdfjs-printing-not-supported = Warning: Printing is not fully supported by this browser.\npdfjs-printing-not-ready = Warning: The PDF is not fully loaded for printing.\npdfjs-toggle-sidebar-button =\n    .title = Toggle Sidebar\npdfjs-toggle-sidebar-notification-button =\n    .title = Toggle Sidebar (document contains outline/attachments/layers)\npdfjs-toggle-sidebar-button-label = Toggle Sidebar\npdfjs-document-outline-button =\n    .title = Show Document Outline (double-click to expand/collapse all items)\npdfjs-document-outline-button-label = Document Outline\npdfjs-attachments-button =\n    .title = Show Attachments\npdfjs-attachments-button-label = Attachments\npdfjs-layers-button =\n    .title = Show Layers (double-click to reset all layers to the default state)\npdfjs-layers-button-label = Layers\npdfjs-thumbs-button =\n    .title = Show Thumbnails\npdfjs-thumbs-button-label = Thumbnails\npdfjs-current-outline-item-button =\n    .title = Find Current Outline Item\npdfjs-current-outline-item-button-label = Current Outline Item\npdfjs-findbar-button =\n    .title = Find in Document\npdfjs-findbar-button-label = Find\npdfjs-additional-layers = Additional Layers\npdfjs-thumb-page-title =\n    .title = Page { $page }\npdfjs-thumb-page-canvas =\n    .aria-label = Thumbnail of Page { $page }\npdfjs-find-input =\n    .title = Find\n    .placeholder = Find in document\u2026\npdfjs-find-previous-button =\n    .title = Find the previous occurrence of the phrase\npdfjs-find-previous-button-label = Previous\npdfjs-find-next-button =\n    .title = Find the next occurrence of the phrase\npdfjs-find-next-button-label = Next\npdfjs-find-highlight-checkbox = Highlight All\npdfjs-find-match-case-checkbox-label = Match Case\npdfjs-find-match-diacritics-checkbox-label = Match Diacritics\npdfjs-find-entire-word-checkbox-label = Whole Words\npdfjs-find-reached-top = Reached top of document, continued from bottom\npdfjs-find-reached-bottom = Reached end of document, continued from top\npdfjs-find-match-count =\n    { $total ->\n        [one] { $current } of { $total } match\n       *[other] { $current } of { $total } matches\n    }\npdfjs-find-match-count-limit =\n    { $limit ->\n        [one] More than { $limit } match\n       *[other] More than { $limit } matches\n    }\npdfjs-find-not-found = Phrase not found\npdfjs-page-scale-width = Page Width\npdfjs-page-scale-fit = Page Fit\npdfjs-page-scale-auto = Automatic Zoom\npdfjs-page-scale-actual = Actual Size\npdfjs-page-scale-percent = { $scale }%\npdfjs-page-landmark =\n    .aria-label = Page { $page }\npdfjs-loading-error = An error occurred while loading the PDF.\npdfjs-invalid-file-error = Invalid or corrupted PDF file.\npdfjs-missing-file-error = Missing PDF file.\npdfjs-unexpected-response-error = Unexpected server response.\npdfjs-rendering-error = An error occurred while rendering the page.\npdfjs-annotation-date-string = { $date }, { $time }\npdfjs-text-annotation-type =\n    .alt = [{ $type } Annotation]\npdfjs-password-label = Enter the password to open this PDF file.\npdfjs-password-invalid = Invalid password. Please try again.\npdfjs-password-ok-button = OK\npdfjs-password-cancel-button = Cancel\npdfjs-web-fonts-disabled = Web fonts are disabled: unable to use embedded PDF fonts.\npdfjs-editor-free-text-button =\n    .title = Text\npdfjs-editor-free-text-button-label = Text\npdfjs-editor-ink-button =\n    .title = Draw\npdfjs-editor-ink-button-label = Draw\npdfjs-editor-stamp-button =\n    .title = Add or edit images\npdfjs-editor-stamp-button-label = Add or edit images\npdfjs-editor-remove-button =\n    .title = Remove\npdfjs-editor-free-text-color-input = Color\npdfjs-editor-free-text-size-input = Size\npdfjs-editor-ink-color-input = Color\npdfjs-editor-ink-thickness-input = Thickness\npdfjs-editor-ink-opacity-input = Opacity\npdfjs-editor-stamp-add-image-button =\n    .title = Add image\npdfjs-editor-stamp-add-image-button-label = Add image\npdfjs-free-text =\n    .aria-label = Text Editor\npdfjs-free-text-default-content = Start typing\u2026\npdfjs-ink =\n    .aria-label = Draw Editor\npdfjs-ink-canvas =\n    .aria-label = User-created image\npdfjs-editor-alt-text-button-label = Alt text\npdfjs-editor-alt-text-edit-button-label = Edit alt text\npdfjs-editor-alt-text-dialog-label = Choose an option\npdfjs-editor-alt-text-dialog-description = Alt text (alternative text) helps when people can\u2019t see the image or when it doesn\u2019t load.\npdfjs-editor-alt-text-add-description-label = Add a description\npdfjs-editor-alt-text-add-description-description = Aim for 1-2 sentences that describe the subject, setting, or actions.\npdfjs-editor-alt-text-mark-decorative-label = Mark as decorative\npdfjs-editor-alt-text-mark-decorative-description = This is used for ornamental images, like borders or watermarks.\npdfjs-editor-alt-text-cancel-button = Cancel\npdfjs-editor-alt-text-save-button = Save\npdfjs-editor-alt-text-decorative-tooltip = Marked as decorative\npdfjs-editor-alt-text-textarea =\n    .placeholder = For example, \u201CA young man sits down at a table to eat a meal\u201D\npdfjs-editor-resizer-label-top-left = Top left corner \u2014 resize\npdfjs-editor-resizer-label-top-middle = Top middle \u2014 resize\npdfjs-editor-resizer-label-top-right = Top right corner \u2014 resize\npdfjs-editor-resizer-label-middle-right = Middle right \u2014 resize\npdfjs-editor-resizer-label-bottom-right = Bottom right corner \u2014 resize\npdfjs-editor-resizer-label-bottom-middle = Bottom middle \u2014 resize\npdfjs-editor-resizer-label-bottom-left = Bottom left corner \u2014 resize\npdfjs-editor-resizer-label-middle-left = Middle left \u2014 resize';
-    const resource = new fluent_bundle__WEBPACK_IMPORTED_MODULE_1__.FluentResource(text);
-    const bundle = new fluent_bundle__WEBPACK_IMPORTED_MODULE_1__.FluentBundle(lang);
-    const errors = bundle.addResource(resource);
-    if (errors.length) {
-      console.error("L10n errors", errors);
-    }
-    yield bundle;
-  }
-  static get instance() {
-    return (0,pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.shadow)(this, "instance", new ConstL10n("en-us"));
-  }
-}
-const NullL10n = {
-  getLanguage() {
-    return ConstL10n.instance.getLanguage();
-  },
-  getDirection() {
-    return ConstL10n.instance.getDirection();
-  },
-  async get(ids, args = null, fallback) {
-    return ConstL10n.instance.get(ids, args, fallback);
-  },
-  async translate(element) {
-    return ConstL10n.instance.translate(element);
-  },
-  pause() {
-    return ConstL10n.instance.pause();
-  },
-  resume() {
-    return ConstL10n.instance.resume();
-  }
+// EXTERNAL MODULE: ./web/ui_utils.js
+var ui_utils = __webpack_require__(256);
+;// CONCATENATED MODULE: ./web/pdf_find_utils.js
+const CharacterType = {
+  SPACE: 0,
+  ALPHA_LETTER: 1,
+  PUNCT: 2,
+  HAN_LETTER: 3,
+  KATAKANA_LETTER: 4,
+  HIRAGANA_LETTER: 5,
+  HALFWIDTH_KATAKANA_LETTER: 6,
+  THAI_LETTER: 7
 };
+function isAlphabeticalScript(charCode) {
+  return charCode < 0x2e80;
+}
+function isAscii(charCode) {
+  return (charCode & 0xff80) === 0;
+}
+function isAsciiAlpha(charCode) {
+  return charCode >= 0x61 && charCode <= 0x7a || charCode >= 0x41 && charCode <= 0x5a;
+}
+function isAsciiDigit(charCode) {
+  return charCode >= 0x30 && charCode <= 0x39;
+}
+function isAsciiSpace(charCode) {
+  return charCode === 0x20 || charCode === 0x09 || charCode === 0x0d || charCode === 0x0a;
+}
+function isHan(charCode) {
+  return charCode >= 0x3400 && charCode <= 0x9fff || charCode >= 0xf900 && charCode <= 0xfaff;
+}
+function isKatakana(charCode) {
+  return charCode >= 0x30a0 && charCode <= 0x30ff;
+}
+function isHiragana(charCode) {
+  return charCode >= 0x3040 && charCode <= 0x309f;
+}
+function isHalfwidthKatakana(charCode) {
+  return charCode >= 0xff60 && charCode <= 0xff9f;
+}
+function isThai(charCode) {
+  return (charCode & 0xff80) === 0x0e00;
+}
+function getCharacterType(charCode) {
+  if (isAlphabeticalScript(charCode)) {
+    if (isAscii(charCode)) {
+      if (isAsciiSpace(charCode)) {
+        return CharacterType.SPACE;
+      } else if (isAsciiAlpha(charCode) || isAsciiDigit(charCode) || charCode === 0x5f) {
+        return CharacterType.ALPHA_LETTER;
+      }
+      return CharacterType.PUNCT;
+    } else if (isThai(charCode)) {
+      return CharacterType.THAI_LETTER;
+    } else if (charCode === 0xa0) {
+      return CharacterType.SPACE;
+    }
+    return CharacterType.ALPHA_LETTER;
+  }
+  if (isHan(charCode)) {
+    return CharacterType.HAN_LETTER;
+  } else if (isKatakana(charCode)) {
+    return CharacterType.KATAKANA_LETTER;
+  } else if (isHiragana(charCode)) {
+    return CharacterType.HIRAGANA_LETTER;
+  } else if (isHalfwidthKatakana(charCode)) {
+    return CharacterType.HALFWIDTH_KATAKANA_LETTER;
+  }
+  return CharacterType.ALPHA_LETTER;
+}
+let NormalizeWithNFKC;
+function getNormalizeWithNFKC() {
+  NormalizeWithNFKC ||= ` ¨ª¯²-µ¸-º¼-¾Ĳ-ĳĿ-ŀŉſǄ-ǌǱ-ǳʰ-ʸ˘-˝ˠ-ˤʹͺ;΄-΅·ϐ-ϖϰ-ϲϴ-ϵϹևٵ-ٸक़-य़ড়-ঢ়য়ਲ਼ਸ਼ਖ਼-ਜ਼ਫ਼ଡ଼-ଢ଼ำຳໜ-ໝ༌གྷཌྷདྷབྷཛྷཀྵჼᴬ-ᴮᴰ-ᴺᴼ-ᵍᵏ-ᵪᵸᶛ-ᶿẚ-ẛάέήίόύώΆ᾽-῁ΈΉ῍-῏ΐΊ῝-῟ΰΎ῭-`ΌΏ´-῾ - ‑‗․-… ″-‴‶-‷‼‾⁇-⁉⁗ ⁰-ⁱ⁴-₎ₐ-ₜ₨℀-℃℅-ℇ℉-ℓℕ-№ℙ-ℝ℠-™ℤΩℨK-ℭℯ-ℱℳ-ℹ℻-⅀ⅅ-ⅉ⅐-ⅿ↉∬-∭∯-∰〈-〉①-⓪⨌⩴-⩶⫝̸ⱼ-ⱽⵯ⺟⻳⼀-⿕　〶〸-〺゛-゜ゟヿㄱ-ㆎ㆒-㆟㈀-㈞㈠-㉇㉐-㉾㊀-㏿ꚜ-ꚝꝰꟲ-ꟴꟸ-ꟹꭜ-ꭟꭩ豈-嗀塚晴凞-羽蘒諸逸-都飯-舘並-龎ﬀ-ﬆﬓ-ﬗיִײַ-זּטּ-לּמּנּ-סּףּ-פּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-﷼︐-︙︰-﹄﹇-﹒﹔-﹦﹨-﹫ﹰ-ﹲﹴﹶ-ﻼ！-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ￠-￦`;
+  return NormalizeWithNFKC;
+}
 
-__webpack_async_result__();
-} catch(e) { __webpack_async_result__(e); } });
-
-/***/ }),
-
-/***/ 557:
-/***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
-
-__webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   FindState: () => (/* binding */ FindState),
-/* harmony export */   PDFFindController: () => (/* binding */ PDFFindController)
-/* harmony export */ });
-/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(927);
-/* harmony import */ var _pdf_find_utils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(839);
-/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(869);
-var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_2__]);
-pdfjs_lib__WEBPACK_IMPORTED_MODULE_2__ = (__webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__)[0];
-
+;// CONCATENATED MODULE: ./web/pdf_find_controller.js
 
 
 const FindState = {
@@ -2450,7 +2573,7 @@ function normalize(text) {
     normalizationRegex = withSyllablesRegExp;
   } else {
     const replace = Object.keys(CHARACTERS_TO_NORMALIZE).join("");
-    const toNormalizeWithNFKC = (0,_pdf_find_utils_js__WEBPACK_IMPORTED_MODULE_1__.getNormalizeWithNFKC)();
+    const toNormalizeWithNFKC = getNormalizeWithNFKC();
     const CJK = "(?:\\p{Ideographic}|[\u3040-\u30FF])";
     const HKDiacritics = "(?:\u3099|\u309A)";
     const regexp = `([${replace}])|([${toNormalizeWithNFKC}])|(${HKDiacritics}\\n)|(\\p{M}+(?:-\\n)?)|(\\S-\\n)|(${CJK}\\n)|(\\n)`;
@@ -2576,11 +2699,11 @@ function getOriginalIndex(diffs, pos, len) {
   }
   const start = pos;
   const end = pos + len - 1;
-  let i = (0,_ui_utils_js__WEBPACK_IMPORTED_MODULE_0__.binarySearchFirstItem)(diffs, x => x[0] >= start);
+  let i = (0,ui_utils.binarySearchFirstItem)(diffs, x => x[0] >= start);
   if (diffs[i][0] > start) {
     --i;
   }
-  let j = (0,_ui_utils_js__WEBPACK_IMPORTED_MODULE_0__.binarySearchFirstItem)(diffs, x => x[0] >= end, i);
+  let j = (0,ui_utils.binarySearchFirstItem)(diffs, x => x[0] >= end, i);
   if (diffs[j][0] > end) {
     --j;
   }
@@ -2699,7 +2822,7 @@ class PDFFindController {
       top: MATCH_SCROLL_OFFSET_TOP,
       left: selectedLeft + MATCH_SCROLL_OFFSET_LEFT
     };
-    (0,_ui_utils_js__WEBPACK_IMPORTED_MODULE_0__.scrollIntoView)(element, spot, true);
+    (0,ui_utils.scrollIntoView)(element, spot, true);
   }
   #reset() {
     this._highlightMatches = false;
@@ -2729,7 +2852,7 @@ class PDFFindController {
     this._dirtyMatch = false;
     clearTimeout(this._findTimeout);
     this._findTimeout = null;
-    this._firstPageCapability = new pdfjs_lib__WEBPACK_IMPORTED_MODULE_2__.PromiseCapability();
+    this._firstPageCapability = Promise.withResolvers();
   }
   get #query() {
     const {
@@ -2774,7 +2897,7 @@ class PDFFindController {
     if (match) {
       const first = content.charCodeAt(startIdx);
       const limit = match[1].charCodeAt(0);
-      if ((0,_pdf_find_utils_js__WEBPACK_IMPORTED_MODULE_1__.getCharacterType)(first) === (0,_pdf_find_utils_js__WEBPACK_IMPORTED_MODULE_1__.getCharacterType)(limit)) {
+      if (getCharacterType(first) === getCharacterType(limit)) {
         return false;
       }
     }
@@ -2782,7 +2905,7 @@ class PDFFindController {
     if (match) {
       const last = content.charCodeAt(startIdx + length - 1);
       const limit = match[1].charCodeAt(0);
-      if ((0,_pdf_find_utils_js__WEBPACK_IMPORTED_MODULE_1__.getCharacterType)(last) === (0,_pdf_find_utils_js__WEBPACK_IMPORTED_MODULE_1__.getCharacterType)(limit)) {
+      if (getCharacterType(last) === getCharacterType(limit)) {
         return false;
       }
     }
@@ -2892,17 +3015,18 @@ class PDFFindController {
     if (this._extractTextPromises.length > 0) {
       return;
     }
-    let promise = Promise.resolve();
+    let deferred = Promise.resolve();
     const textOptions = {
       disableNormalization: true
     };
     for (let i = 0, ii = this._linkService.pagesCount; i < ii; i++) {
-      const extractTextCapability = new pdfjs_lib__WEBPACK_IMPORTED_MODULE_2__.PromiseCapability();
-      this._extractTextPromises[i] = extractTextCapability.promise;
-      promise = promise.then(() => {
-        return this._pdfDocument.getPage(i + 1).then(pdfPage => {
-          return pdfPage.getTextContent(textOptions);
-        }).then(textContent => {
+      const {
+        promise,
+        resolve
+      } = Promise.withResolvers();
+      this._extractTextPromises[i] = promise;
+      deferred = deferred.then(() => {
+        return this._pdfDocument.getPage(i + 1).then(pdfPage => pdfPage.getTextContent(textOptions)).then(textContent => {
           const strBuf = [];
           for (const textItem of textContent.items) {
             strBuf.push(textItem.str);
@@ -2911,13 +3035,13 @@ class PDFFindController {
             }
           }
           [this._pageContents[i], this._pageDiffs[i], this._hasDiacritics[i]] = normalize(strBuf.join(""));
-          extractTextCapability.resolve();
+          resolve();
         }, reason => {
           console.error(`Unable to get text content for page ${i + 1}`, reason);
           this._pageContents[i] = "";
           this._pageDiffs[i] = null;
           this._hasDiacritics[i] = false;
-          extractTextCapability.resolve();
+          resolve();
         });
       });
     }
@@ -3109,104 +3233,18 @@ class PDFFindController {
   }
 }
 
-__webpack_async_result__();
-} catch(e) { __webpack_async_result__(e); } });
 
 /***/ }),
 
-/***/ 839:
-/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
-
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   getCharacterType: () => (/* binding */ getCharacterType),
-/* harmony export */   getNormalizeWithNFKC: () => (/* binding */ getNormalizeWithNFKC)
-/* harmony export */ });
-/* unused harmony export CharacterType */
-const CharacterType = {
-  SPACE: 0,
-  ALPHA_LETTER: 1,
-  PUNCT: 2,
-  HAN_LETTER: 3,
-  KATAKANA_LETTER: 4,
-  HIRAGANA_LETTER: 5,
-  HALFWIDTH_KATAKANA_LETTER: 6,
-  THAI_LETTER: 7
-};
-function isAlphabeticalScript(charCode) {
-  return charCode < 0x2e80;
-}
-function isAscii(charCode) {
-  return (charCode & 0xff80) === 0;
-}
-function isAsciiAlpha(charCode) {
-  return charCode >= 0x61 && charCode <= 0x7a || charCode >= 0x41 && charCode <= 0x5a;
-}
-function isAsciiDigit(charCode) {
-  return charCode >= 0x30 && charCode <= 0x39;
-}
-function isAsciiSpace(charCode) {
-  return charCode === 0x20 || charCode === 0x09 || charCode === 0x0d || charCode === 0x0a;
-}
-function isHan(charCode) {
-  return charCode >= 0x3400 && charCode <= 0x9fff || charCode >= 0xf900 && charCode <= 0xfaff;
-}
-function isKatakana(charCode) {
-  return charCode >= 0x30a0 && charCode <= 0x30ff;
-}
-function isHiragana(charCode) {
-  return charCode >= 0x3040 && charCode <= 0x309f;
-}
-function isHalfwidthKatakana(charCode) {
-  return charCode >= 0xff60 && charCode <= 0xff9f;
-}
-function isThai(charCode) {
-  return (charCode & 0xff80) === 0x0e00;
-}
-function getCharacterType(charCode) {
-  if (isAlphabeticalScript(charCode)) {
-    if (isAscii(charCode)) {
-      if (isAsciiSpace(charCode)) {
-        return CharacterType.SPACE;
-      } else if (isAsciiAlpha(charCode) || isAsciiDigit(charCode) || charCode === 0x5f) {
-        return CharacterType.ALPHA_LETTER;
-      }
-      return CharacterType.PUNCT;
-    } else if (isThai(charCode)) {
-      return CharacterType.THAI_LETTER;
-    } else if (charCode === 0xa0) {
-      return CharacterType.SPACE;
-    }
-    return CharacterType.ALPHA_LETTER;
-  }
-  if (isHan(charCode)) {
-    return CharacterType.HAN_LETTER;
-  } else if (isKatakana(charCode)) {
-    return CharacterType.KATAKANA_LETTER;
-  } else if (isHiragana(charCode)) {
-    return CharacterType.HIRAGANA_LETTER;
-  } else if (isHalfwidthKatakana(charCode)) {
-    return CharacterType.HALFWIDTH_KATAKANA_LETTER;
-  }
-  return CharacterType.ALPHA_LETTER;
-}
-let NormalizeWithNFKC;
-function getNormalizeWithNFKC() {
-  NormalizeWithNFKC ||= ` ¨ª¯²-µ¸-º¼-¾Ĳ-ĳĿ-ŀŉſǄ-ǌǱ-ǳʰ-ʸ˘-˝ˠ-ˤʹͺ;΄-΅·ϐ-ϖϰ-ϲϴ-ϵϹևٵ-ٸक़-य़ড়-ঢ়য়ਲ਼ਸ਼ਖ਼-ਜ਼ਫ਼ଡ଼-ଢ଼ำຳໜ-ໝ༌གྷཌྷདྷབྷཛྷཀྵჼᴬ-ᴮᴰ-ᴺᴼ-ᵍᵏ-ᵪᵸᶛ-ᶿẚ-ẛάέήίόύώΆ᾽-῁ΈΉ῍-῏ΐΊ῝-῟ΰΎ῭-`ΌΏ´-῾ - ‑‗․-… ″-‴‶-‷‼‾⁇-⁉⁗ ⁰-ⁱ⁴-₎ₐ-ₜ₨℀-℃℅-ℇ℉-ℓℕ-№ℙ-ℝ℠-™ℤΩℨK-ℭℯ-ℱℳ-ℹ℻-⅀ⅅ-ⅉ⅐-ⅿ↉∬-∭∯-∰〈-〉①-⓪⨌⩴-⩶⫝̸ⱼ-ⱽⵯ⺟⻳⼀-⿕　〶〸-〺゛-゜ゟヿㄱ-ㆎ㆒-㆟㈀-㈞㈠-㉇㉐-㉾㊀-㏿ꚜ-ꚝꝰꟲ-ꟴꟸ-ꟹꭜ-ꭟꭩ豈-嗀塚晴凞-羽蘒諸逸-都飯-舘並-龎ﬀ-ﬆﬓ-ﬗיִײַ-זּטּ-לּמּנּ-סּףּ-פּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-﷼︐-︙︰-﹄﹇-﹒﹔-﹦﹨-﹫ﹰ-ﹲﹴﹶ-ﻼ！-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ￠-￦`;
-  return NormalizeWithNFKC;
-}
-
-
-/***/ }),
-
-/***/ 418:
+/***/ 543:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   PDFHistory: () => (/* binding */ PDFHistory)
 /* harmony export */ });
 /* unused harmony exports isDestArraysEqual, isDestHashesEqual */
-/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(927);
-/* harmony import */ var _event_utils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(554);
+/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(256);
+/* harmony import */ var _event_utils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(656);
 
 
 const HASH_CHANGE_TIMEOUT = 1000;
@@ -3216,6 +3254,7 @@ function getCurrentHash() {
   return document.location.hash;
 }
 class PDFHistory {
+  #eventAbortController = null;
   constructor({
     linkService,
     eventBus
@@ -3225,7 +3264,6 @@ class PDFHistory {
     this._initialized = false;
     this._fingerprint = "";
     this.reset();
-    this._boundEvents = null;
     this.eventBus._on("pagesinit", () => {
       this._isPagesLoaded = false;
       this.eventBus._on("pagesloaded", evt => {
@@ -3251,7 +3289,7 @@ class PDFHistory {
     this._fingerprint = fingerprint;
     this._updateUrl = updateUrl === true;
     this._initialized = true;
-    this._bindEvents();
+    this.#bindEvents();
     const state = window.history.state;
     this._popStateInProgress = false;
     this._blockHashChange = 0;
@@ -3260,17 +3298,17 @@ class PDFHistory {
     this._uid = this._maxUid = 0;
     this._destination = null;
     this._position = null;
-    if (!this._isValidState(state, true) || resetHistory) {
+    if (!this.#isValidState(state, true) || resetHistory) {
       const {
         hash,
         page,
         rotation
-      } = this._parseCurrentHash(true);
+      } = this.#parseCurrentHash(true);
       if (!hash || reInitialized || resetHistory) {
-        this._pushOrReplaceState(null, true);
+        this.#pushOrReplaceState(null, true);
         return;
       }
-      this._pushOrReplaceState({
+      this.#pushOrReplaceState({
         hash,
         page,
         rotation
@@ -3278,7 +3316,7 @@ class PDFHistory {
       return;
     }
     const destination = state.destination;
-    this._updateInternalState(destination, state.uid, true);
+    this.#updateInternalState(destination, state.uid, true);
     if (destination.rotation !== undefined) {
       this._initialRotation = destination.rotation;
     }
@@ -3293,9 +3331,9 @@ class PDFHistory {
   }
   reset() {
     if (this._initialized) {
-      this._pageHide();
+      this.#pageHide();
       this._initialized = false;
-      this._unbindEvents();
+      this.#unbindEvents();
     }
     if (this._updateViewareaTimeout) {
       clearTimeout(this._updateViewareaTimeout);
@@ -3318,7 +3356,7 @@ class PDFHistory {
     } else if (!Array.isArray(explicitDest)) {
       console.error("PDFHistory.push: " + `"${explicitDest}" is not a valid explicitDest parameter.`);
       return;
-    } else if (!this._isValidPage(pageNumber)) {
+    } else if (!this.#isValidPage(pageNumber)) {
       if (pageNumber !== null || this._destination) {
         console.error("PDFHistory.push: " + `"${pageNumber}" is not a valid pageNumber parameter.`);
         return;
@@ -3338,7 +3376,7 @@ class PDFHistory {
     if (this._popStateInProgress && !forceReplace) {
       return;
     }
-    this._pushOrReplaceState({
+    this.#pushOrReplaceState({
       dest: explicitDest,
       hash,
       page: pageNumber,
@@ -3355,7 +3393,7 @@ class PDFHistory {
     if (!this._initialized) {
       return;
     }
-    if (!this._isValidPage(pageNumber)) {
+    if (!this.#isValidPage(pageNumber)) {
       console.error(`PDFHistory.pushPage: "${pageNumber}" is not a valid page number.`);
       return;
     }
@@ -3365,7 +3403,7 @@ class PDFHistory {
     if (this._popStateInProgress) {
       return;
     }
-    this._pushOrReplaceState({
+    this.#pushOrReplaceState({
       dest: null,
       hash: `page=${pageNumber}`,
       page: pageNumber,
@@ -3382,14 +3420,14 @@ class PDFHistory {
     if (!this._initialized || this._popStateInProgress) {
       return;
     }
-    this._tryPushCurrentPosition();
+    this.#tryPushCurrentPosition();
   }
   back() {
     if (!this._initialized || this._popStateInProgress) {
       return;
     }
     const state = window.history.state;
-    if (this._isValidState(state) && state.uid > 0) {
+    if (this.#isValidState(state) && state.uid > 0) {
       window.history.back();
     }
   }
@@ -3398,7 +3436,7 @@ class PDFHistory {
       return;
     }
     const state = window.history.state;
-    if (this._isValidState(state) && state.uid < this._maxUid) {
+    if (this.#isValidState(state) && state.uid < this._maxUid) {
       window.history.forward();
     }
   }
@@ -3411,17 +3449,17 @@ class PDFHistory {
   get initialRotation() {
     return this._initialized ? this._initialRotation : null;
   }
-  _pushOrReplaceState(destination, forceReplace = false) {
+  #pushOrReplaceState(destination, forceReplace = false) {
     const shouldReplace = forceReplace || !this._destination;
     const newState = {
       fingerprint: this._fingerprint,
       uid: shouldReplace ? this._uid : this._uid + 1,
       destination
     };
-    this._updateInternalState(destination, newState.uid);
+    this.#updateInternalState(destination, newState.uid);
     let newUrl;
     if (this._updateUrl && destination?.hash) {
-      const baseUrl = document.location.href.split("#")[0];
+      const baseUrl = document.location.href.split("#", 1)[0];
       if (!baseUrl.startsWith("file://")) {
         newUrl = `${baseUrl}#${destination.hash}`;
       }
@@ -3432,7 +3470,7 @@ class PDFHistory {
       window.history.pushState(newState, "", newUrl);
     }
   }
-  _tryPushCurrentPosition(temporary = false) {
+  #tryPushCurrentPosition(temporary = false) {
     if (!this._position) {
       return;
     }
@@ -3442,11 +3480,11 @@ class PDFHistory {
       position.temporary = true;
     }
     if (!this._destination) {
-      this._pushOrReplaceState(position);
+      this.#pushOrReplaceState(position);
       return;
     }
     if (this._destination.temporary) {
-      this._pushOrReplaceState(position, true);
+      this.#pushOrReplaceState(position, true);
       return;
     }
     if (this._destination.hash === position.hash) {
@@ -3462,12 +3500,12 @@ class PDFHistory {
       }
       forceReplace = true;
     }
-    this._pushOrReplaceState(position, forceReplace);
+    this.#pushOrReplaceState(position, forceReplace);
   }
-  _isValidPage(val) {
+  #isValidPage(val) {
     return Number.isInteger(val) && val > 0 && val <= this.linkService.pagesCount;
   }
-  _isValidState(state, checkReload = false) {
+  #isValidState(state, checkReload = false) {
     if (!state) {
       return false;
     }
@@ -3492,7 +3530,7 @@ class PDFHistory {
     }
     return true;
   }
-  _updateInternalState(destination, uid, removeTemporary = false) {
+  #updateInternalState(destination, uid, removeTemporary = false) {
     if (this._updateViewareaTimeout) {
       clearTimeout(this._updateViewareaTimeout);
       this._updateViewareaTimeout = null;
@@ -3505,12 +3543,12 @@ class PDFHistory {
     this._maxUid = Math.max(this._maxUid, uid);
     this._numPositionUpdates = 0;
   }
-  _parseCurrentHash(checkNameddest = false) {
+  #parseCurrentHash(checkNameddest = false) {
     const hash = unescape(getCurrentHash()).substring(1);
     const params = (0,_ui_utils_js__WEBPACK_IMPORTED_MODULE_0__.parseQueryString)(hash);
     const nameddest = params.get("nameddest") || "";
     let page = params.get("page") | 0;
-    if (!this._isValidPage(page) || checkNameddest && nameddest.length > 0) {
+    if (!this.#isValidPage(page) || checkNameddest && nameddest.length > 0) {
       page = null;
     }
     return {
@@ -3519,7 +3557,7 @@ class PDFHistory {
       rotation: this.linkService.rotation
     };
   }
-  _updateViewarea({
+  #updateViewarea({
     location
   }) {
     if (this._updateViewareaTimeout) {
@@ -3541,13 +3579,13 @@ class PDFHistory {
     if (UPDATE_VIEWAREA_TIMEOUT > 0) {
       this._updateViewareaTimeout = setTimeout(() => {
         if (!this._popStateInProgress) {
-          this._tryPushCurrentPosition(true);
+          this.#tryPushCurrentPosition(true);
         }
         this._updateViewareaTimeout = null;
       }, UPDATE_VIEWAREA_TIMEOUT);
     }
   }
-  _popState({
+  #popState({
     state
   }) {
     const newHash = getCurrentHash(),
@@ -3559,15 +3597,15 @@ class PDFHistory {
         hash,
         page,
         rotation
-      } = this._parseCurrentHash();
-      this._pushOrReplaceState({
+      } = this.#parseCurrentHash();
+      this.#pushOrReplaceState({
         hash,
         page,
         rotation
       }, true);
       return;
     }
-    if (!this._isValidState(state)) {
+    if (!this.#isValidState(state)) {
       return;
     }
     this._popStateInProgress = true;
@@ -3582,7 +3620,7 @@ class PDFHistory {
       });
     }
     const destination = state.destination;
-    this._updateInternalState(destination, state.uid, true);
+    this.#updateInternalState(destination, state.uid, true);
     if ((0,_ui_utils_js__WEBPACK_IMPORTED_MODULE_0__.isValidRotation)(destination.rotation)) {
       this.linkService.rotation = destination.rotation;
     }
@@ -3597,32 +3635,32 @@ class PDFHistory {
       this._popStateInProgress = false;
     });
   }
-  _pageHide() {
+  #pageHide() {
     if (!this._destination || this._destination.temporary) {
-      this._tryPushCurrentPosition();
+      this.#tryPushCurrentPosition();
     }
   }
-  _bindEvents() {
-    if (this._boundEvents) {
+  #bindEvents() {
+    if (this.#eventAbortController) {
       return;
     }
-    this._boundEvents = {
-      updateViewarea: this._updateViewarea.bind(this),
-      popState: this._popState.bind(this),
-      pageHide: this._pageHide.bind(this)
-    };
-    this.eventBus._on("updateviewarea", this._boundEvents.updateViewarea);
-    window.addEventListener("popstate", this._boundEvents.popState);
-    window.addEventListener("pagehide", this._boundEvents.pageHide);
+    this.#eventAbortController = new AbortController();
+    const {
+      signal
+    } = this.#eventAbortController;
+    this.eventBus._on("updateviewarea", this.#updateViewarea.bind(this), {
+      signal
+    });
+    window.addEventListener("popstate", this.#popState.bind(this), {
+      signal
+    });
+    window.addEventListener("pagehide", this.#pageHide.bind(this), {
+      signal
+    });
   }
-  _unbindEvents() {
-    if (!this._boundEvents) {
-      return;
-    }
-    this.eventBus._off("updateviewarea", this._boundEvents.updateViewarea);
-    window.removeEventListener("popstate", this._boundEvents.popState);
-    window.removeEventListener("pagehide", this._boundEvents.pageHide);
-    this._boundEvents = null;
+  #unbindEvents() {
+    this.#eventAbortController?.abort();
+    this.#eventAbortController = null;
   }
 }
 function isDestHashesEqual(destHash, pushHash) {
@@ -3676,7 +3714,7 @@ function isDestArraysEqual(firstDest, secondDest) {
 
 /***/ }),
 
-/***/ 234:
+/***/ 787:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
@@ -3684,7 +3722,7 @@ function isDestArraysEqual(firstDest, secondDest) {
 /* harmony export */   PDFLinkService: () => (/* binding */ PDFLinkService),
 /* harmony export */   SimpleLinkService: () => (/* binding */ SimpleLinkService)
 /* harmony export */ });
-/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(927);
+/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(256);
 
 const DEFAULT_LINK_REL = "noopener noreferrer nofollow";
 const LinkTarget = {
@@ -3694,46 +3732,8 @@ const LinkTarget = {
   PARENT: 3,
   TOP: 4
 };
-function addLinkAttributes(link, {
-  url,
-  target,
-  rel,
-  enabled = true
-} = {}) {
-  if (!url || typeof url !== "string") {
-    throw new Error('A valid "url" parameter must provided.');
-  }
-  if (enabled) {
-    link.href = link.title = url;
-  } else {
-    link.href = "";
-    link.title = `Disabled: ${url}`;
-    link.onclick = () => {
-      return false;
-    };
-  }
-  let targetStr = "";
-  switch (target) {
-    case LinkTarget.NONE:
-      break;
-    case LinkTarget.SELF:
-      targetStr = "_self";
-      break;
-    case LinkTarget.BLANK:
-      targetStr = "_blank";
-      break;
-    case LinkTarget.PARENT:
-      targetStr = "_parent";
-      break;
-    case LinkTarget.TOP:
-      targetStr = "_top";
-      break;
-  }
-  link.target = targetStr;
-  link.rel = typeof rel === "string" ? rel : DEFAULT_LINK_REL;
-}
 class PDFLinkService {
-  #pagesRefCache = new Map();
+  externalLinkEnabled = true;
   constructor({
     eventBus,
     externalLinkTarget = null,
@@ -3743,7 +3743,6 @@ class PDFLinkService {
     this.eventBus = eventBus;
     this.externalLinkTarget = externalLinkTarget;
     this.externalLinkRel = externalLinkRel;
-    this.externalLinkEnabled = true;
     this._ignoreDestinationZoom = ignoreDestinationZoom;
     this.baseUrl = null;
     this.pdfDocument = null;
@@ -3753,7 +3752,6 @@ class PDFLinkService {
   setDocument(pdfDocument, baseUrl = null) {
     this.baseUrl = baseUrl;
     this.pdfDocument = pdfDocument;
-    this.#pagesRefCache.clear();
   }
   setViewer(pdfViewer) {
     this.pdfViewer = pdfViewer;
@@ -3765,42 +3763,56 @@ class PDFLinkService {
     return this.pdfDocument ? this.pdfDocument.numPages : 0;
   }
   get page() {
-    return this.pdfViewer.currentPageNumber;
+    return this.pdfDocument ? this.pdfViewer.currentPageNumber : 1;
   }
   set page(value) {
-    this.pdfViewer.currentPageNumber = value;
+    if (this.pdfDocument) {
+      this.pdfViewer.currentPageNumber = value;
+    }
   }
   get rotation() {
-    return this.pdfViewer.pagesRotation;
+    return this.pdfDocument ? this.pdfViewer.pagesRotation : 0;
   }
   set rotation(value) {
-    this.pdfViewer.pagesRotation = value;
+    if (this.pdfDocument) {
+      this.pdfViewer.pagesRotation = value;
+    }
   }
   get isInPresentationMode() {
-    return this.pdfViewer.isInPresentationMode;
+    return this.pdfDocument ? this.pdfViewer.isInPresentationMode : false;
   }
-  #goToDestinationHelper(rawDest, namedDest = null, explicitDest) {
-    const destRef = explicitDest[0];
-    let pageNumber;
-    if (typeof destRef === "object" && destRef !== null) {
-      pageNumber = this._cachedPageNumber(destRef);
+  async goToDestination(dest) {
+    if (!this.pdfDocument) {
+      return;
+    }
+    let namedDest, explicitDest, pageNumber;
+    if (typeof dest === "string") {
+      namedDest = dest;
+      explicitDest = await this.pdfDocument.getDestination(dest);
+    } else {
+      namedDest = null;
+      explicitDest = await dest;
+    }
+    if (!Array.isArray(explicitDest)) {
+      console.error(`goToDestination: "${explicitDest}" is not a valid destination array, for dest="${dest}".`);
+      return;
+    }
+    const [destRef] = explicitDest;
+    if (destRef && typeof destRef === "object") {
+      pageNumber = this.pdfDocument.cachedPageNumber(destRef);
       if (!pageNumber) {
-        this.pdfDocument.getPageIndex(destRef).then(pageIndex => {
-          this.cachePageRef(pageIndex + 1, destRef);
-          this.#goToDestinationHelper(rawDest, namedDest, explicitDest);
-        }).catch(() => {
-          console.error(`PDFLinkService.#goToDestinationHelper: "${destRef}" is not ` + `a valid page reference, for dest="${rawDest}".`);
-        });
-        return;
+        try {
+          pageNumber = (await this.pdfDocument.getPageIndex(destRef)) + 1;
+        } catch {
+          console.error(`goToDestination: "${destRef}" is not a valid page reference, for dest="${dest}".`);
+          return;
+        }
       }
     } else if (Number.isInteger(destRef)) {
       pageNumber = destRef + 1;
-    } else {
-      console.error(`PDFLinkService.#goToDestinationHelper: "${destRef}" is not ` + `a valid destination reference, for dest="${rawDest}".`);
-      return;
     }
     if (!pageNumber || pageNumber < 1 || pageNumber > this.pagesCount) {
-      console.error(`PDFLinkService.#goToDestinationHelper: "${pageNumber}" is not ` + `a valid page number, for dest="${rawDest}".`);
+      console.error(`goToDestination: "${pageNumber}" is not a valid page number, for dest="${dest}".`);
       return;
     }
     if (this.pdfHistory) {
@@ -3816,24 +3828,6 @@ class PDFLinkService {
       destArray: explicitDest,
       ignoreDestinationZoom: this._ignoreDestinationZoom
     });
-  }
-  async goToDestination(dest) {
-    if (!this.pdfDocument) {
-      return;
-    }
-    let namedDest, explicitDest;
-    if (typeof dest === "string") {
-      namedDest = dest;
-      explicitDest = await this.pdfDocument.getDestination(dest);
-    } else {
-      namedDest = null;
-      explicitDest = await dest;
-    }
-    if (!Array.isArray(explicitDest)) {
-      console.error(`PDFLinkService.goToDestination: "${explicitDest}" is not ` + `a valid destination array, for dest="${dest}".`);
-      return;
-    }
-    this.#goToDestinationHelper(dest, namedDest, explicitDest);
   }
   goToPage(val) {
     if (!this.pdfDocument) {
@@ -3853,12 +3847,37 @@ class PDFLinkService {
     });
   }
   addLinkAttributes(link, url, newWindow = false) {
-    addLinkAttributes(link, {
-      url,
-      target: newWindow ? LinkTarget.BLANK : this.externalLinkTarget,
-      rel: this.externalLinkRel,
-      enabled: this.externalLinkEnabled
-    });
+    if (!url || typeof url !== "string") {
+      throw new Error('A valid "url" parameter must provided.');
+    }
+    const target = newWindow ? LinkTarget.BLANK : this.externalLinkTarget,
+      rel = this.externalLinkRel;
+    if (this.externalLinkEnabled) {
+      link.href = link.title = url;
+    } else {
+      link.href = "";
+      link.title = `Disabled: ${url}`;
+      link.onclick = () => false;
+    }
+    let targetStr = "";
+    switch (target) {
+      case LinkTarget.NONE:
+        break;
+      case LinkTarget.SELF:
+        targetStr = "_self";
+        break;
+      case LinkTarget.BLANK:
+        targetStr = "_blank";
+        break;
+      case LinkTarget.PARENT:
+        targetStr = "_parent";
+        break;
+      case LinkTarget.TOP:
+        targetStr = "_top";
+        break;
+    }
+    link.target = targetStr;
+    link.rel = typeof rel === "string" ? rel : DEFAULT_LINK_REL;
   }
   getDestinationHash(dest) {
     if (typeof dest === "string") {
@@ -3940,22 +3959,25 @@ class PDFLinkService {
       if (params.has("nameddest")) {
         this.goToDestination(params.get("nameddest"));
       }
-    } else {
-      dest = unescape(hash);
-      try {
-        dest = JSON.parse(dest);
-        if (!Array.isArray(dest)) {
-          dest = dest.toString();
-        }
-      } catch {}
-      if (typeof dest === "string" || PDFLinkService.#isValidExplicitDestination(dest)) {
-        this.goToDestination(dest);
-        return;
-      }
-      console.error(`PDFLinkService.setHash: "${unescape(hash)}" is not a valid destination.`);
+      return;
     }
+    dest = unescape(hash);
+    try {
+      dest = JSON.parse(dest);
+      if (!Array.isArray(dest)) {
+        dest = dest.toString();
+      }
+    } catch {}
+    if (typeof dest === "string" || PDFLinkService.#isValidExplicitDest(dest)) {
+      this.goToDestination(dest);
+      return;
+    }
+    console.error(`PDFLinkService.setHash: "${unescape(hash)}" is not a valid destination.`);
   }
   executeNamedAction(action) {
+    if (!this.pdfDocument) {
+      return;
+    }
     switch (action) {
       case "GoBack":
         this.pdfHistory?.back();
@@ -3984,87 +4006,48 @@ class PDFLinkService {
     });
   }
   async executeSetOCGState(action) {
-    const pdfDocument = this.pdfDocument;
-    const optionalContentConfig = await this.pdfViewer.optionalContentConfigPromise;
+    if (!this.pdfDocument) {
+      return;
+    }
+    const pdfDocument = this.pdfDocument,
+      optionalContentConfig = await this.pdfViewer.optionalContentConfigPromise;
     if (pdfDocument !== this.pdfDocument) {
       return;
     }
-    let operator;
-    for (const elem of action.state) {
-      switch (elem) {
-        case "ON":
-        case "OFF":
-        case "Toggle":
-          operator = elem;
-          continue;
-      }
-      switch (operator) {
-        case "ON":
-          optionalContentConfig.setVisibility(elem, true);
-          break;
-        case "OFF":
-          optionalContentConfig.setVisibility(elem, false);
-          break;
-        case "Toggle":
-          const group = optionalContentConfig.getGroup(elem);
-          if (group) {
-            optionalContentConfig.setVisibility(elem, !group.visible);
-          }
-          break;
-      }
-    }
+    optionalContentConfig.setOCGState(action);
     this.pdfViewer.optionalContentConfigPromise = Promise.resolve(optionalContentConfig);
   }
-  cachePageRef(pageNum, pageRef) {
-    if (!pageRef) {
-      return;
-    }
-    const refStr = pageRef.gen === 0 ? `${pageRef.num}R` : `${pageRef.num}R${pageRef.gen}`;
-    this.#pagesRefCache.set(refStr, pageNum);
-  }
-  _cachedPageNumber(pageRef) {
-    if (!pageRef) {
-      return null;
-    }
-    const refStr = pageRef.gen === 0 ? `${pageRef.num}R` : `${pageRef.num}R${pageRef.gen}`;
-    return this.#pagesRefCache.get(refStr) || null;
-  }
-  static #isValidExplicitDestination(dest) {
-    if (!Array.isArray(dest)) {
+  static #isValidExplicitDest(dest) {
+    if (!Array.isArray(dest) || dest.length < 2) {
       return false;
     }
-    const destLength = dest.length;
-    if (destLength < 2) {
+    const [page, zoom, ...args] = dest;
+    if (!(typeof page === "object" && Number.isInteger(page?.num) && Number.isInteger(page?.gen)) && !Number.isInteger(page)) {
       return false;
     }
-    const page = dest[0];
-    if (!(typeof page === "object" && Number.isInteger(page.num) && Number.isInteger(page.gen)) && !(Number.isInteger(page) && page >= 0)) {
-      return false;
-    }
-    const zoom = dest[1];
-    if (!(typeof zoom === "object" && typeof zoom.name === "string")) {
+    if (!(typeof zoom === "object" && typeof zoom?.name === "string")) {
       return false;
     }
     let allowNull = true;
     switch (zoom.name) {
       case "XYZ":
-        if (destLength !== 5) {
+        if (args.length !== 3) {
           return false;
         }
         break;
       case "Fit":
       case "FitB":
-        return destLength === 2;
+        return args.length === 0;
       case "FitH":
       case "FitBH":
       case "FitV":
       case "FitBV":
-        if (destLength !== 3) {
+        if (args.length !== 1) {
           return false;
         }
         break;
       case "FitR":
-        if (destLength !== 6) {
+        if (args.length !== 4) {
           return false;
         }
         allowNull = false;
@@ -4072,77 +4055,43 @@ class PDFLinkService {
       default:
         return false;
     }
-    for (let i = 2; i < destLength; i++) {
-      const param = dest[i];
-      if (!(typeof param === "number" || allowNull && param === null)) {
+    for (const arg of args) {
+      if (!(typeof arg === "number" || allowNull && arg === null)) {
         return false;
       }
     }
     return true;
   }
 }
-class SimpleLinkService {
-  constructor() {
-    this.externalLinkEnabled = true;
-  }
-  get pagesCount() {
-    return 0;
-  }
-  get page() {
-    return 0;
-  }
-  set page(value) {}
-  get rotation() {
-    return 0;
-  }
-  set rotation(value) {}
-  get isInPresentationMode() {
-    return false;
-  }
-  async goToDestination(dest) {}
-  goToPage(val) {}
-  addLinkAttributes(link, url, newWindow = false) {
-    addLinkAttributes(link, {
-      url,
-      enabled: this.externalLinkEnabled
-    });
-  }
-  getDestinationHash(dest) {
-    return "#";
-  }
-  getAnchorUrl(hash) {
-    return "#";
-  }
-  setHash(hash) {}
-  executeNamedAction(action) {}
-  executeSetOCGState(action) {}
-  cachePageRef(pageNum, pageRef) {}
+class SimpleLinkService extends PDFLinkService {
+  setDocument(pdfDocument, baseUrl = null) {}
 }
 
 
 /***/ }),
 
-/***/ 732:
+/***/ 966:
 /***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   PDFPageView: () => (/* binding */ PDFPageView)
 /* harmony export */ });
-/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(869);
-/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(927);
-/* harmony import */ var _annotation_editor_layer_builder_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(640);
-/* harmony import */ var _annotation_layer_builder_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(735);
-/* harmony import */ var _app_options_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(961);
-/* harmony import */ var web_l10n_utils__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(910);
-/* harmony import */ var _pdf_link_service_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(234);
-/* harmony import */ var _struct_tree_layer_builder_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(498);
-/* harmony import */ var _text_accessibility_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(630);
-/* harmony import */ var _text_highlighter_js__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(274);
-/* harmony import */ var _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(13);
-/* harmony import */ var _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(12);
-var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__, _annotation_editor_layer_builder_js__WEBPACK_IMPORTED_MODULE_2__, _annotation_layer_builder_js__WEBPACK_IMPORTED_MODULE_3__, web_l10n_utils__WEBPACK_IMPORTED_MODULE_5__, _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_9__, _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_10__]);
-([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__, _annotation_editor_layer_builder_js__WEBPACK_IMPORTED_MODULE_2__, _annotation_layer_builder_js__WEBPACK_IMPORTED_MODULE_3__, web_l10n_utils__WEBPACK_IMPORTED_MODULE_5__, _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_9__, _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_10__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
+/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(603);
+/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(256);
+/* harmony import */ var _annotation_editor_layer_builder_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(283);
+/* harmony import */ var _annotation_layer_builder_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(707);
+/* harmony import */ var _app_options_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(840);
+/* harmony import */ var _draw_layer_builder_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(88);
+/* harmony import */ var web_null_l10n__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(410);
+/* harmony import */ var _pdf_link_service_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(787);
+/* harmony import */ var _struct_tree_layer_builder_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(698);
+/* harmony import */ var _text_accessibility_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(860);
+/* harmony import */ var _text_highlighter_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(27);
+/* harmony import */ var _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(765);
+/* harmony import */ var _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(973);
+var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__, _annotation_editor_layer_builder_js__WEBPACK_IMPORTED_MODULE_2__, _annotation_layer_builder_js__WEBPACK_IMPORTED_MODULE_3__, _draw_layer_builder_js__WEBPACK_IMPORTED_MODULE_5__, web_null_l10n__WEBPACK_IMPORTED_MODULE_6__, _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_10__, _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_11__]);
+([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__, _annotation_editor_layer_builder_js__WEBPACK_IMPORTED_MODULE_2__, _annotation_layer_builder_js__WEBPACK_IMPORTED_MODULE_3__, _draw_layer_builder_js__WEBPACK_IMPORTED_MODULE_5__, web_null_l10n__WEBPACK_IMPORTED_MODULE_6__, _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_10__, _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_11__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
 
 
 
@@ -4155,7 +4104,7 @@ var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfj
 
 
 
-const MAX_CANVAS_PIXELS = _app_options_js__WEBPACK_IMPORTED_MODULE_4__.compatibilityParams.maxCanvasPixels || 16777216;
+
 const DEFAULT_LAYER_PROPERTIES = {
   annotationEditorUIManager: null,
   annotationStorage: null,
@@ -4165,9 +4114,10 @@ const DEFAULT_LAYER_PROPERTIES = {
   findController: null,
   hasJSActionsPromise: null,
   get linkService() {
-    return new _pdf_link_service_js__WEBPACK_IMPORTED_MODULE_6__.SimpleLinkService();
+    return new _pdf_link_service_js__WEBPACK_IMPORTED_MODULE_7__.SimpleLinkService();
   }
 };
+const LAYERS_ORDER = new Map([["canvasWrapper", 0], ["textLayer", 1], ["annotationLayer", 2], ["annotationEditorLayer", 3], ["xfaLayer", 3]]);
 class PDFPageView {
   #annotationMode = pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.AnnotationMode.ENABLE_FORMS;
   #hasRestrictedScaling = false;
@@ -4183,6 +4133,7 @@ class PDFPageView {
     regularAnnotations: true
   };
   #viewportMap = new WeakMap();
+  #layers = [null, null, null, null];
   constructor(options) {
     const container = options.container;
     const defaultViewport = options.defaultViewport;
@@ -4199,12 +4150,12 @@ class PDFPageView {
     this.#textLayerMode = options.textLayerMode ?? _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__.TextLayerMode.ENABLE;
     this.#annotationMode = options.annotationMode ?? pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.AnnotationMode.ENABLE_FORMS;
     this.imageResourcesPath = options.imageResourcesPath || "";
-    this.isOffscreenCanvasSupported = options.isOffscreenCanvasSupported ?? true;
-    this.maxCanvasPixels = options.maxCanvasPixels ?? MAX_CANVAS_PIXELS;
+    this.maxCanvasPixels = options.maxCanvasPixels ?? _app_options_js__WEBPACK_IMPORTED_MODULE_4__.AppOptions.get("maxCanvasPixels");
     this.pageColors = options.pageColors || null;
     this.eventBus = options.eventBus;
     this.renderingQueue = options.renderingQueue;
-    this.l10n = options.l10n || web_l10n_utils__WEBPACK_IMPORTED_MODULE_5__.NullL10n;
+    this.l10n = options.l10n;
+    this.l10n ||= new web_null_l10n__WEBPACK_IMPORTED_MODULE_6__.GenericL10n();
     this.renderTask = null;
     this.resume = null;
     this._isStandalone = !this.renderingQueue?.hasViewer();
@@ -4216,6 +4167,7 @@ class PDFPageView {
     this.zoomLayer = null;
     this.xfaLayer = null;
     this.structTreeLayer = null;
+    this.drawLayer = null;
     const div = document.createElement("div");
     div.className = "page";
     div.setAttribute("data-page-number", this.id);
@@ -4240,10 +4192,27 @@ class PDFPageView {
           this.#useThumbnailCanvas.initialOptionalContent = optionalContentConfig.hasInitialVisibility;
         });
       }
-      if (this.l10n === web_l10n_utils__WEBPACK_IMPORTED_MODULE_5__.NullL10n) {
+      if (!options.l10n) {
         this.l10n.translate(this.div);
       }
     }
+  }
+  #addLayer(div, name) {
+    const pos = LAYERS_ORDER.get(name);
+    const oldDiv = this.#layers[pos];
+    this.#layers[pos] = div;
+    if (oldDiv) {
+      oldDiv.replaceWith(div);
+      return;
+    }
+    for (let i = pos - 1; i >= 0; i--) {
+      const layer = this.#layers[i];
+      if (layer) {
+        layer.after(div);
+        return;
+      }
+    }
+    this.div.prepend(div);
   }
   get renderingState() {
     return this.#renderingState;
@@ -4288,7 +4257,8 @@ class PDFPageView {
   }
   setPdfPage(pdfPage) {
     if (this._isStandalone && (this.pageColors?.foreground === "CanvasText" || this.pageColors?.background === "Canvas")) {
-      this._container?.style.setProperty("--hcm-highlight-filter", pdfPage.filterFactory.addHighlightHCMFilter("CanvasText", "Canvas", "HighlightText", "Highlight"));
+      this._container?.style.setProperty("--hcm-highlight-filter", pdfPage.filterFactory.addHighlightHCMFilter("highlight", "CanvasText", "Canvas", "HighlightText", "Highlight"));
+      this._container?.style.setProperty("--hcm-highlight-selected-filter", pdfPage.filterFactory.addHighlightHCMFilter("highlight_selected", "CanvasText", "Canvas", "HighlightText", "Highlight"));
     }
     this.pdfPage = pdfPage;
     this.pdfPageRotate = pdfPage.rotate;
@@ -4305,7 +4275,7 @@ class PDFPageView {
     this.pdfPage?.cleanup();
   }
   get _textHighlighter() {
-    return (0,pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.shadow)(this, "_textHighlighter", new _text_highlighter_js__WEBPACK_IMPORTED_MODULE_11__.TextHighlighter({
+    return (0,pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.shadow)(this, "_textHighlighter", new _text_highlighter_js__WEBPACK_IMPORTED_MODULE_12__.TextHighlighter({
       pageIndex: this.id - 1,
       eventBus: this.eventBus,
       findController: this.#layerProperties.findController
@@ -4341,6 +4311,13 @@ class PDFPageView {
       });
     }
   }
+  async #renderDrawLayer() {
+    try {
+      await this.drawLayer.render("display");
+    } catch (ex) {
+      console.error(`#renderDrawLayer: "${ex}".`);
+    }
+  }
   async #renderXfaLayer() {
     let error = null;
     try {
@@ -4354,7 +4331,7 @@ class PDFPageView {
     } finally {
       if (this.xfaLayer?.div) {
         this.l10n.pause();
-        this.div.append(this.xfaLayer.div);
+        this.#addLayer(this.xfaLayer.div, "xfaLayer");
         this.l10n.resume();
       }
       this.eventBus.dispatch("xfalayerrendered", {
@@ -4402,7 +4379,7 @@ class PDFPageView {
     if (!this.textLayer) {
       return;
     }
-    this.structTreeLayer ||= new _struct_tree_layer_builder_js__WEBPACK_IMPORTED_MODULE_7__.StructTreeLayerBuilder();
+    this.structTreeLayer ||= new _struct_tree_layer_builder_js__WEBPACK_IMPORTED_MODULE_8__.StructTreeLayerBuilder();
     const tree = await (!this.structTreeLayer.renderingDone ? this.pdfPage.getStructTree() : null);
     const treeDom = this.structTreeLayer?.render(tree);
     if (treeDom) {
@@ -4466,6 +4443,10 @@ class PDFPageView {
           continue;
       }
       node.remove();
+      const layerIndex = this.#layers.indexOf(node);
+      if (layerIndex >= 0) {
+        this.#layers[layerIndex] = null;
+      }
     }
     div.removeAttribute("data-loaded");
     if (annotationLayerNode) {
@@ -4614,6 +4595,10 @@ class PDFPageView {
       this._annotationCanvasMap = null;
     }
     if (this.annotationEditorLayer && (!keepAnnotationEditorLayer || !this.annotationEditorLayer.div)) {
+      if (this.drawLayer) {
+        this.drawLayer.cancel();
+        this.drawLayer = null;
+      }
       this.annotationEditorLayer.cancel();
       this.annotationEditorLayer = null;
     }
@@ -4658,6 +4643,9 @@ class PDFPageView {
       this.#renderAnnotationLayer();
     }
     if (redrawAnnotationEditorLayer && this.annotationEditorLayer) {
+      if (this.drawLayer) {
+        this.#renderDrawLayer();
+      }
       this.#renderAnnotationEditorLayer();
     }
     if (redrawXfaLayer && this.xfaLayer) {
@@ -4723,24 +4711,25 @@ class PDFPageView {
     this.renderingState = _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__.RenderingStates.RUNNING;
     const canvasWrapper = document.createElement("div");
     canvasWrapper.classList.add("canvasWrapper");
-    div.append(canvasWrapper);
+    canvasWrapper.setAttribute("aria-hidden", true);
+    this.#addLayer(canvasWrapper, "canvasWrapper");
     if (!this.textLayer && this.#textLayerMode !== _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__.TextLayerMode.DISABLE && !pdfPage.isPureXfa) {
-      this._accessibilityManager ||= new _text_accessibility_js__WEBPACK_IMPORTED_MODULE_8__.TextAccessibilityManager();
-      this.textLayer = new _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_9__.TextLayerBuilder({
+      this._accessibilityManager ||= new _text_accessibility_js__WEBPACK_IMPORTED_MODULE_9__.TextAccessibilityManager();
+      this.textLayer = new _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_10__.TextLayerBuilder({
         highlighter: this._textHighlighter,
         accessibilityManager: this._accessibilityManager,
-        isOffscreenCanvasSupported: this.isOffscreenCanvasSupported,
-        enablePermissions: this.#textLayerMode === _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__.TextLayerMode.ENABLE_PERMISSIONS
+        enablePermissions: this.#textLayerMode === _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__.TextLayerMode.ENABLE_PERMISSIONS,
+        onAppend: textLayerDiv => {
+          this.l10n.pause();
+          this.#addLayer(textLayerDiv, "textLayer");
+          this.l10n.resume();
+        }
       });
-      this.textLayer.onAppend = textLayerDiv => {
-        this.l10n.pause();
-        this.div.append(textLayerDiv);
-        this.l10n.resume();
-      };
     }
     if (!this.annotationLayer && this.#annotationMode !== pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.AnnotationMode.DISABLE) {
       const {
         annotationStorage,
+        annotationEditorUIManager,
         downloadManager,
         enableScripting,
         fieldObjectsPromise,
@@ -4749,7 +4738,6 @@ class PDFPageView {
       } = this.#layerProperties;
       this._annotationCanvasMap ||= new Map();
       this.annotationLayer = new _annotation_layer_builder_js__WEBPACK_IMPORTED_MODULE_3__.AnnotationLayerBuilder({
-        pageDiv: div,
         pdfPage,
         annotationStorage,
         imageResourcesPath: this.imageResourcesPath,
@@ -4760,7 +4748,11 @@ class PDFPageView {
         hasJSActionsPromise,
         fieldObjectsPromise,
         annotationCanvasMap: this._annotationCanvasMap,
-        accessibilityManager: this._accessibilityManager
+        accessibilityManager: this._accessibilityManager,
+        annotationEditorUIManager,
+        onAppend: annotationLayerDiv => {
+          this.#addLayer(annotationLayerDiv, "annotationLayer");
+        }
       });
     }
     const renderContinueCallback = cont => {
@@ -4840,20 +4832,29 @@ class PDFPageView {
       if (this.annotationLayer) {
         await this.#renderAnnotationLayer();
       }
+      const {
+        annotationEditorUIManager
+      } = this.#layerProperties;
+      if (!annotationEditorUIManager) {
+        return;
+      }
+      this.drawLayer ||= new _draw_layer_builder_js__WEBPACK_IMPORTED_MODULE_5__.DrawLayerBuilder({
+        pageIndex: this.id
+      });
+      await this.#renderDrawLayer();
+      this.drawLayer.setParent(canvasWrapper);
       if (!this.annotationEditorLayer) {
-        const {
-          annotationEditorUIManager
-        } = this.#layerProperties;
-        if (!annotationEditorUIManager) {
-          return;
-        }
         this.annotationEditorLayer = new _annotation_editor_layer_builder_js__WEBPACK_IMPORTED_MODULE_2__.AnnotationEditorLayerBuilder({
           uiManager: annotationEditorUIManager,
-          pageDiv: div,
           pdfPage,
           l10n,
           accessibilityManager: this._accessibilityManager,
-          annotationLayer: this.annotationLayer?.annotationLayer
+          annotationLayer: this.annotationLayer?.annotationLayer,
+          textLayer: this.textLayer,
+          drawLayer: this.drawLayer.getDrawLayer(),
+          onAppend: annotationEditorLayerDiv => {
+            this.#addLayer(annotationEditorLayerDiv, "annotationEditorLayer");
+          }
         });
       }
       this.#renderAnnotationEditorLayer();
@@ -4869,7 +4870,7 @@ class PDFPageView {
           annotationStorage,
           linkService
         } = this.#layerProperties;
-        this.xfaLayer = new _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_10__.XfaLayerBuilder({
+        this.xfaLayer = new _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_11__.XfaLayerBuilder({
           pdfPage,
           annotationStorage,
           linkService
@@ -4910,15 +4911,15 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 119:
+/***/ 615:
 /***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   PDFRenderingQueue: () => (/* binding */ PDFRenderingQueue)
 /* harmony export */ });
-/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(869);
-/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(927);
+/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(603);
+/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(256);
 var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__]);
 pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = (__webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__)[0];
 
@@ -5040,15 +5041,15 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 338:
+/***/ 371:
 /***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   PDFScriptingManager: () => (/* binding */ PDFScriptingManagerComponents)
 /* harmony export */ });
-/* harmony import */ var _generic_scripting_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(170);
-/* harmony import */ var _pdf_scripting_manager_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(599);
+/* harmony import */ var _generic_scripting_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(289);
+/* harmony import */ var _pdf_scripting_manager_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(942);
 var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([_generic_scripting_js__WEBPACK_IMPORTED_MODULE_0__, _pdf_scripting_manager_js__WEBPACK_IMPORTED_MODULE_1__]);
 ([_generic_scripting_js__WEBPACK_IMPORTED_MODULE_0__, _pdf_scripting_manager_js__WEBPACK_IMPORTED_MODULE_1__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
 
@@ -5064,15 +5065,9 @@ class PDFScriptingManagerComponents extends _pdf_scripting_manager_js__WEBPACK_I
       });
     }
     options.externalServices ||= {
-      createScripting: ({
-        sandboxBundleSrc
-      }) => {
-        return new _generic_scripting_js__WEBPACK_IMPORTED_MODULE_0__.GenericScripting(sandboxBundleSrc);
-      }
+      createScripting: () => new _generic_scripting_js__WEBPACK_IMPORTED_MODULE_0__.GenericScripting(options.sandboxBundleSrc)
     };
-    options.docProperties ||= pdfDocument => {
-      return (0,_generic_scripting_js__WEBPACK_IMPORTED_MODULE_0__.docProperties)(pdfDocument);
-    };
+    options.docProperties ||= pdfDocument => (0,_generic_scripting_js__WEBPACK_IMPORTED_MODULE_0__.docProperties)(pdfDocument);
     super(options);
   }
 }
@@ -5082,15 +5077,15 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 599:
+/***/ 942:
 /***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   PDFScriptingManager: () => (/* binding */ PDFScriptingManager)
 /* harmony export */ });
-/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(927);
-/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(869);
+/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(256);
+/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(603);
 var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_1__]);
 pdfjs_lib__WEBPACK_IMPORTED_MODULE_1__ = (__webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__)[0];
 
@@ -5099,22 +5094,20 @@ class PDFScriptingManager {
   #closeCapability = null;
   #destroyCapability = null;
   #docProperties = null;
+  #eventAbortController = null;
   #eventBus = null;
   #externalServices = null;
   #pdfDocument = null;
   #pdfViewer = null;
   #ready = false;
-  #sandboxBundleSrc = null;
   #scripting = null;
   #willPrintCapability = null;
   constructor({
     eventBus,
-    sandboxBundleSrc = null,
     externalServices = null,
     docProperties = null
   }) {
     this.#eventBus = eventBus;
-    this.#sandboxBundleSrc = sandboxBundleSrc;
     this.#externalServices = externalServices;
     this.#docProperties = docProperties;
   }
@@ -5144,15 +5137,24 @@ class PDFScriptingManager {
       await this.#destroyScripting();
       return;
     }
-    this._internalEvents.set("updatefromsandbox", event => {
+    const eventBus = this.#eventBus;
+    this.#eventAbortController = new AbortController();
+    const {
+      signal
+    } = this.#eventAbortController;
+    eventBus._on("updatefromsandbox", event => {
       if (event?.source === window) {
         this.#updateFromSandbox(event.detail);
       }
+    }, {
+      signal
     });
-    this._internalEvents.set("dispatcheventinsandbox", event => {
+    eventBus._on("dispatcheventinsandbox", event => {
       this.#scripting?.dispatchEventInSandbox(event.detail);
+    }, {
+      signal
     });
-    this._internalEvents.set("pagechanging", ({
+    eventBus._on("pagechanging", ({
       pageNumber,
       previous
     }) => {
@@ -5161,8 +5163,10 @@ class PDFScriptingManager {
       }
       this.#dispatchPageClose(previous);
       this.#dispatchPageOpen(pageNumber);
+    }, {
+      signal
     });
-    this._internalEvents.set("pagerendered", ({
+    eventBus._on("pagerendered", ({
       pageNumber
     }) => {
       if (!this._pageOpenPending.has(pageNumber)) {
@@ -5172,18 +5176,19 @@ class PDFScriptingManager {
         return;
       }
       this.#dispatchPageOpen(pageNumber);
+    }, {
+      signal
     });
-    this._internalEvents.set("pagesdestroy", async () => {
+    eventBus._on("pagesdestroy", async () => {
       await this.#dispatchPageClose(this.#pdfViewer.currentPageNumber);
       await this.#scripting?.dispatchEventInSandbox({
         id: "doc",
         name: "WillClose"
       });
       this.#closeCapability?.resolve();
+    }, {
+      signal
     });
-    for (const [name, listener] of this._internalEvents) {
-      this.#eventBus._on(name, listener);
-    }
     try {
       const docProperties = await this.#docProperties(pdfDocument);
       if (pdfDocument !== this.#pdfDocument) {
@@ -5201,7 +5206,7 @@ class PDFScriptingManager {
           actions: docActions
         }
       });
-      this.#eventBus.dispatch("sandboxcreated", {
+      eventBus.dispatch("sandboxcreated", {
         source: this
       });
     } catch (error) {
@@ -5237,7 +5242,7 @@ class PDFScriptingManager {
       return;
     }
     await this.#willPrintCapability?.promise;
-    this.#willPrintCapability = new pdfjs_lib__WEBPACK_IMPORTED_MODULE_1__.PromiseCapability();
+    this.#willPrintCapability = Promise.withResolvers();
     try {
       await this.#scripting.dispatchEventInSandbox({
         id: "doc",
@@ -5261,9 +5266,6 @@ class PDFScriptingManager {
   }
   get ready() {
     return this.#ready;
-  }
-  get _internalEvents() {
-    return (0,pdfjs_lib__WEBPACK_IMPORTED_MODULE_1__.shadow)(this, "_internalEvents", new Map());
   }
   get _pageOpenPending() {
     return (0,pdfjs_lib__WEBPACK_IMPORTED_MODULE_1__.shadow)(this, "_pageOpenPending", new Set());
@@ -5366,7 +5368,7 @@ class PDFScriptingManager {
     const pdfDocument = this.#pdfDocument,
       visitedPages = this._visitedPages;
     if (initialize) {
-      this.#closeCapability = new pdfjs_lib__WEBPACK_IMPORTED_MODULE_1__.PromiseCapability();
+      this.#closeCapability = Promise.withResolvers();
     }
     if (!this.#closeCapability) {
       return;
@@ -5416,13 +5418,11 @@ class PDFScriptingManager {
     });
   }
   #initScripting() {
-    this.#destroyCapability = new pdfjs_lib__WEBPACK_IMPORTED_MODULE_1__.PromiseCapability();
+    this.#destroyCapability = Promise.withResolvers();
     if (this.#scripting) {
       throw new Error("#initScripting: Scripting already exists.");
     }
-    return this.#externalServices.createScripting({
-      sandboxBundleSrc: this.#sandboxBundleSrc
-    });
+    return this.#externalServices.createScripting();
   }
   async #destroyScripting() {
     if (!this.#scripting) {
@@ -5442,10 +5442,8 @@ class PDFScriptingManager {
     } catch {}
     this.#willPrintCapability?.reject(new Error("Scripting destroyed."));
     this.#willPrintCapability = null;
-    for (const [name, listener] of this._internalEvents) {
-      this.#eventBus._off(name, listener);
-    }
-    this._internalEvents.clear();
+    this.#eventAbortController?.abort();
+    this.#eventAbortController = null;
     this._pageOpenPending.clear();
     this._visitedPages.clear();
     this.#scripting = null;
@@ -5459,15 +5457,15 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 64:
+/***/ 838:
 /***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   PDFSinglePageViewer: () => (/* binding */ PDFSinglePageViewer)
 /* harmony export */ });
-/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(927);
-/* harmony import */ var _pdf_viewer_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(290);
+/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(256);
+/* harmony import */ var _pdf_viewer_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(285);
 var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([_pdf_viewer_js__WEBPACK_IMPORTED_MODULE_1__]);
 _pdf_viewer_js__WEBPACK_IMPORTED_MODULE_1__ = (__webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__)[0];
 
@@ -5489,7 +5487,7 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 103:
+/***/ 624:
 /***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
@@ -5500,42 +5498,40 @@ __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 /* harmony export */   FindState: () => (/* reexport safe */ _pdf_find_controller_js__WEBPACK_IMPORTED_MODULE_0__.FindState),
 /* harmony export */   GenericL10n: () => (/* reexport safe */ _genericl10n_js__WEBPACK_IMPORTED_MODULE_6__.GenericL10n),
 /* harmony export */   LinkTarget: () => (/* reexport safe */ _pdf_link_service_js__WEBPACK_IMPORTED_MODULE_1__.LinkTarget),
-/* harmony export */   NullL10n: () => (/* reexport safe */ _l10n_utils_js__WEBPACK_IMPORTED_MODULE_7__.NullL10n),
 /* harmony export */   PDFFindController: () => (/* reexport safe */ _pdf_find_controller_js__WEBPACK_IMPORTED_MODULE_0__.PDFFindController),
-/* harmony export */   PDFHistory: () => (/* reexport safe */ _pdf_history_js__WEBPACK_IMPORTED_MODULE_8__.PDFHistory),
+/* harmony export */   PDFHistory: () => (/* reexport safe */ _pdf_history_js__WEBPACK_IMPORTED_MODULE_7__.PDFHistory),
 /* harmony export */   PDFLinkService: () => (/* reexport safe */ _pdf_link_service_js__WEBPACK_IMPORTED_MODULE_1__.PDFLinkService),
-/* harmony export */   PDFPageView: () => (/* reexport safe */ _pdf_page_view_js__WEBPACK_IMPORTED_MODULE_9__.PDFPageView),
-/* harmony export */   PDFScriptingManager: () => (/* reexport safe */ _pdf_scripting_manager_component_js__WEBPACK_IMPORTED_MODULE_10__.PDFScriptingManager),
-/* harmony export */   PDFSinglePageViewer: () => (/* reexport safe */ _pdf_single_page_viewer_js__WEBPACK_IMPORTED_MODULE_11__.PDFSinglePageViewer),
-/* harmony export */   PDFViewer: () => (/* reexport safe */ _pdf_viewer_js__WEBPACK_IMPORTED_MODULE_12__.PDFViewer),
+/* harmony export */   PDFPageView: () => (/* reexport safe */ _pdf_page_view_js__WEBPACK_IMPORTED_MODULE_8__.PDFPageView),
+/* harmony export */   PDFScriptingManager: () => (/* reexport safe */ _pdf_scripting_manager_component_js__WEBPACK_IMPORTED_MODULE_9__.PDFScriptingManager),
+/* harmony export */   PDFSinglePageViewer: () => (/* reexport safe */ _pdf_single_page_viewer_js__WEBPACK_IMPORTED_MODULE_10__.PDFSinglePageViewer),
+/* harmony export */   PDFViewer: () => (/* reexport safe */ _pdf_viewer_js__WEBPACK_IMPORTED_MODULE_11__.PDFViewer),
 /* harmony export */   ProgressBar: () => (/* reexport safe */ _ui_utils_js__WEBPACK_IMPORTED_MODULE_2__.ProgressBar),
 /* harmony export */   RenderingStates: () => (/* reexport safe */ _ui_utils_js__WEBPACK_IMPORTED_MODULE_2__.RenderingStates),
 /* harmony export */   ScrollMode: () => (/* reexport safe */ _ui_utils_js__WEBPACK_IMPORTED_MODULE_2__.ScrollMode),
 /* harmony export */   SimpleLinkService: () => (/* reexport safe */ _pdf_link_service_js__WEBPACK_IMPORTED_MODULE_1__.SimpleLinkService),
 /* harmony export */   SpreadMode: () => (/* reexport safe */ _ui_utils_js__WEBPACK_IMPORTED_MODULE_2__.SpreadMode),
-/* harmony export */   StructTreeLayerBuilder: () => (/* reexport safe */ _struct_tree_layer_builder_js__WEBPACK_IMPORTED_MODULE_13__.StructTreeLayerBuilder),
-/* harmony export */   TextLayerBuilder: () => (/* reexport safe */ _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_14__.TextLayerBuilder),
-/* harmony export */   XfaLayerBuilder: () => (/* reexport safe */ _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_15__.XfaLayerBuilder),
+/* harmony export */   StructTreeLayerBuilder: () => (/* reexport safe */ _struct_tree_layer_builder_js__WEBPACK_IMPORTED_MODULE_12__.StructTreeLayerBuilder),
+/* harmony export */   TextLayerBuilder: () => (/* reexport safe */ _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_13__.TextLayerBuilder),
+/* harmony export */   XfaLayerBuilder: () => (/* reexport safe */ _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_14__.XfaLayerBuilder),
 /* harmony export */   parseQueryString: () => (/* reexport safe */ _ui_utils_js__WEBPACK_IMPORTED_MODULE_2__.parseQueryString)
 /* harmony export */ });
-/* harmony import */ var _pdf_find_controller_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(557);
-/* harmony import */ var _pdf_link_service_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(234);
-/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(927);
-/* harmony import */ var _annotation_layer_builder_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(735);
-/* harmony import */ var _download_manager_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(397);
-/* harmony import */ var _event_utils_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(554);
-/* harmony import */ var _genericl10n_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(450);
-/* harmony import */ var _l10n_utils_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(910);
-/* harmony import */ var _pdf_history_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(418);
-/* harmony import */ var _pdf_page_view_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(732);
-/* harmony import */ var _pdf_scripting_manager_component_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(338);
-/* harmony import */ var _pdf_single_page_viewer_js__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(64);
-/* harmony import */ var _pdf_viewer_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(290);
-/* harmony import */ var _struct_tree_layer_builder_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(498);
-/* harmony import */ var _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(13);
-/* harmony import */ var _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(12);
-var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([_pdf_find_controller_js__WEBPACK_IMPORTED_MODULE_0__, _annotation_layer_builder_js__WEBPACK_IMPORTED_MODULE_3__, _download_manager_js__WEBPACK_IMPORTED_MODULE_4__, _genericl10n_js__WEBPACK_IMPORTED_MODULE_6__, _l10n_utils_js__WEBPACK_IMPORTED_MODULE_7__, _pdf_page_view_js__WEBPACK_IMPORTED_MODULE_9__, _pdf_scripting_manager_component_js__WEBPACK_IMPORTED_MODULE_10__, _pdf_single_page_viewer_js__WEBPACK_IMPORTED_MODULE_11__, _pdf_viewer_js__WEBPACK_IMPORTED_MODULE_12__, _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_14__, _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_15__]);
-([_pdf_find_controller_js__WEBPACK_IMPORTED_MODULE_0__, _annotation_layer_builder_js__WEBPACK_IMPORTED_MODULE_3__, _download_manager_js__WEBPACK_IMPORTED_MODULE_4__, _genericl10n_js__WEBPACK_IMPORTED_MODULE_6__, _l10n_utils_js__WEBPACK_IMPORTED_MODULE_7__, _pdf_page_view_js__WEBPACK_IMPORTED_MODULE_9__, _pdf_scripting_manager_component_js__WEBPACK_IMPORTED_MODULE_10__, _pdf_single_page_viewer_js__WEBPACK_IMPORTED_MODULE_11__, _pdf_viewer_js__WEBPACK_IMPORTED_MODULE_12__, _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_14__, _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_15__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
+/* harmony import */ var _pdf_find_controller_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(814);
+/* harmony import */ var _pdf_link_service_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(787);
+/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(256);
+/* harmony import */ var _annotation_layer_builder_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(707);
+/* harmony import */ var _download_manager_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(544);
+/* harmony import */ var _event_utils_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(656);
+/* harmony import */ var _genericl10n_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(410);
+/* harmony import */ var _pdf_history_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(543);
+/* harmony import */ var _pdf_page_view_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(966);
+/* harmony import */ var _pdf_scripting_manager_component_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(371);
+/* harmony import */ var _pdf_single_page_viewer_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(838);
+/* harmony import */ var _pdf_viewer_js__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(285);
+/* harmony import */ var _struct_tree_layer_builder_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(698);
+/* harmony import */ var _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(765);
+/* harmony import */ var _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(973);
+var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([_annotation_layer_builder_js__WEBPACK_IMPORTED_MODULE_3__, _download_manager_js__WEBPACK_IMPORTED_MODULE_4__, _genericl10n_js__WEBPACK_IMPORTED_MODULE_6__, _pdf_page_view_js__WEBPACK_IMPORTED_MODULE_8__, _pdf_scripting_manager_component_js__WEBPACK_IMPORTED_MODULE_9__, _pdf_single_page_viewer_js__WEBPACK_IMPORTED_MODULE_10__, _pdf_viewer_js__WEBPACK_IMPORTED_MODULE_11__, _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_13__, _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_14__]);
+([_annotation_layer_builder_js__WEBPACK_IMPORTED_MODULE_3__, _download_manager_js__WEBPACK_IMPORTED_MODULE_4__, _genericl10n_js__WEBPACK_IMPORTED_MODULE_6__, _pdf_page_view_js__WEBPACK_IMPORTED_MODULE_8__, _pdf_scripting_manager_component_js__WEBPACK_IMPORTED_MODULE_9__, _pdf_single_page_viewer_js__WEBPACK_IMPORTED_MODULE_10__, _pdf_viewer_js__WEBPACK_IMPORTED_MODULE_11__, _text_layer_builder_js__WEBPACK_IMPORTED_MODULE_13__, _xfa_layer_builder_js__WEBPACK_IMPORTED_MODULE_14__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
 
 
 
@@ -5551,16 +5547,15 @@ var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([_pdf
 
 
 
-
-const pdfjsVersion = '4.0.269';
-const pdfjsBuild = 'f4b396f6c';
+const pdfjsVersion = "4.2.67";
+const pdfjsBuild = "49b388101";
 
 __webpack_async_result__();
 } catch(e) { __webpack_async_result__(e); } });
 
 /***/ }),
 
-/***/ 290:
+/***/ 285:
 /***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
@@ -5568,14 +5563,14 @@ __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 /* harmony export */   PDFViewer: () => (/* binding */ PDFViewer)
 /* harmony export */ });
 /* unused harmony exports PagesCountLimit, PDFPageViewBuffer */
-/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(869);
-/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(927);
-/* harmony import */ var web_l10n_utils__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(910);
-/* harmony import */ var _pdf_page_view_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(732);
-/* harmony import */ var _pdf_rendering_queue_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(119);
-/* harmony import */ var _pdf_link_service_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(234);
-var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__, web_l10n_utils__WEBPACK_IMPORTED_MODULE_2__, _pdf_page_view_js__WEBPACK_IMPORTED_MODULE_3__, _pdf_rendering_queue_js__WEBPACK_IMPORTED_MODULE_4__]);
-([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__, web_l10n_utils__WEBPACK_IMPORTED_MODULE_2__, _pdf_page_view_js__WEBPACK_IMPORTED_MODULE_3__, _pdf_rendering_queue_js__WEBPACK_IMPORTED_MODULE_4__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
+/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(603);
+/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(256);
+/* harmony import */ var web_null_l10n__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(410);
+/* harmony import */ var _pdf_page_view_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(966);
+/* harmony import */ var _pdf_rendering_queue_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(615);
+/* harmony import */ var _pdf_link_service_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(787);
+var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__, web_null_l10n__WEBPACK_IMPORTED_MODULE_2__, _pdf_page_view_js__WEBPACK_IMPORTED_MODULE_3__, _pdf_rendering_queue_js__WEBPACK_IMPORTED_MODULE_4__]);
+([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__, web_null_l10n__WEBPACK_IMPORTED_MODULE_2__, _pdf_page_view_js__WEBPACK_IMPORTED_MODULE_3__, _pdf_rendering_queue_js__WEBPACK_IMPORTED_MODULE_4__] = __webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__);
 
 
 
@@ -5642,12 +5637,15 @@ class PDFPageViewBuffer {
 class PDFViewer {
   #buffer = null;
   #altTextManager = null;
+  #annotationEditorHighlightColors = null;
   #annotationEditorMode = pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.AnnotationEditorType.NONE;
   #annotationEditorUIManager = null;
   #annotationMode = pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.AnnotationMode.ENABLE_FORMS;
   #containerTopLeft = null;
   #copyCallbackBound = null;
+  #enableHighlightFloatingButton = false;
   #enablePermissions = false;
+  #mlManager = null;
   #getAllTextInProgress = false;
   #hiddenCopyElement = null;
   #interruptCopyCondition = false;
@@ -5658,7 +5656,7 @@ class PDFViewer {
   #scaleTimeoutId = null;
   #textLayerMode = _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__.TextLayerMode.ENABLE;
   constructor(options) {
-    const viewerVersion = '4.0.269';
+    const viewerVersion = "4.2.67";
     if (pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.version !== viewerVersion) {
       throw new Error(`The API version "${pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.version}" does not match the Viewer version "${viewerVersion}".`);
     }
@@ -5683,14 +5681,17 @@ class PDFViewer {
     this.#textLayerMode = options.textLayerMode ?? _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__.TextLayerMode.ENABLE;
     this.#annotationMode = options.annotationMode ?? pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.AnnotationMode.ENABLE_FORMS;
     this.#annotationEditorMode = options.annotationEditorMode ?? pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.AnnotationEditorType.NONE;
+    this.#annotationEditorHighlightColors = options.annotationEditorHighlightColors || null;
+    this.#enableHighlightFloatingButton = options.enableHighlightFloatingButton === true;
     this.imageResourcesPath = options.imageResourcesPath || "";
     this.enablePrintAutoRotate = options.enablePrintAutoRotate || false;
     this.removePageBorders = options.removePageBorders || false;
-    this.isOffscreenCanvasSupported = options.isOffscreenCanvasSupported ?? true;
     this.maxCanvasPixels = options.maxCanvasPixels;
-    this.l10n = options.l10n || web_l10n_utils__WEBPACK_IMPORTED_MODULE_2__.NullL10n;
+    this.l10n = options.l10n;
+    this.l10n ||= new web_null_l10n__WEBPACK_IMPORTED_MODULE_2__.GenericL10n();
     this.#enablePermissions = options.enablePermissions || false;
     this.pageColors = options.pageColors || null;
+    this.#mlManager = options.mlManager || null;
     this.defaultRenderingQueue = !options.renderingQueue;
     if (this.defaultRenderingQueue) {
       this.renderingQueue = new _pdf_rendering_queue_js__WEBPACK_IMPORTED_MODULE_4__.PDFRenderingQueue();
@@ -5715,7 +5716,7 @@ class PDFViewer {
         pdfPage?.cleanup();
       }
     });
-    if (this.l10n === web_l10n_utils__WEBPACK_IMPORTED_MODULE_2__.NullL10n) {
+    if (!options.l10n) {
       this.l10n.translate(this.container);
     }
   }
@@ -5729,7 +5730,7 @@ class PDFViewer {
     return new Set(this.#buffer);
   }
   get pageViewsReady() {
-    return this._pagesCapability.settled && this._pages.every(pageView => pageView?.pdfPage);
+    return this._pages.every(pageView => pageView?.pdfPage);
   }
   get renderForms() {
     return this.#annotationMode === pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.AnnotationMode.ENABLE_FORMS;
@@ -5911,9 +5912,9 @@ class PDFViewer {
     }
     return params;
   }
-  #onePageRenderedOrForceFetch() {
+  async #onePageRenderedOrForceFetch() {
     if (document.visibilityState === "hidden" || !this.container.offsetParent || this._getVisiblePages().views.length === 0) {
-      return Promise.resolve();
+      return;
     }
     const visibilityChangePromise = new Promise(resolve => {
       this.#onVisibilityChange = () => {
@@ -5921,12 +5922,12 @@ class PDFViewer {
           return;
         }
         resolve();
-        document.removeEventListener("visibilitychange", this.#onVisibilityChange);
-        this.#onVisibilityChange = null;
       };
       document.addEventListener("visibilitychange", this.#onVisibilityChange);
     });
-    return Promise.race([this._onePageRenderedCapability.promise, visibilityChangePromise]);
+    await Promise.race([this._onePageRenderedCapability.promise, visibilityChangePromise]);
+    document.removeEventListener("visibilitychange", this.#onVisibilityChange);
+    this.#onVisibilityChange = null;
   }
   async getAllText() {
     const texts = [];
@@ -6005,7 +6006,9 @@ class PDFViewer {
     }
     const pagesCount = pdfDocument.numPages;
     const firstPagePromise = pdfDocument.getPage(1);
-    const optionalContentConfigPromise = pdfDocument.getOptionalContentConfig();
+    const optionalContentConfigPromise = pdfDocument.getOptionalContentConfig({
+      intent: "display"
+    });
     const permissionsPromise = this.#enablePermissions ? pdfDocument.getPermissions() : Promise.resolve();
     if (pagesCount > PagesCountLimit.FORCE_SCROLL_MODE_PAGE) {
       console.warn("Forcing PAGE-scrolling for performance reasons, given the length of the document.");
@@ -6030,7 +6033,7 @@ class PDFViewer {
     };
     this.eventBus._on("pagerender", this._onBeforeDraw);
     this._onAfterDraw = evt => {
-      if (evt.cssTransform || this._onePageRenderedCapability.settled) {
+      if (evt.cssTransform) {
         return;
       }
       this._onePageRenderedCapability.resolve({
@@ -6038,10 +6041,6 @@ class PDFViewer {
       });
       this.eventBus._off("pagerendered", this._onAfterDraw);
       this._onAfterDraw = null;
-      if (this.#onVisibilityChange) {
-        document.removeEventListener("visibilitychange", this.#onVisibilityChange);
-        this.#onVisibilityChange = null;
-      }
     };
     this.eventBus._on("pagerendered", this._onAfterDraw);
     Promise.all([firstPagePromise, permissionsPromise]).then(([firstPdfPage, permissions]) => {
@@ -6065,7 +6064,11 @@ class PDFViewer {
         if (pdfDocument.isPureXfa) {
           console.warn("Warning: XFA-editing is not implemented.");
         } else if (isValidAnnotationEditorMode(mode)) {
-          this.#annotationEditorUIManager = new pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.AnnotationEditorUIManager(this.container, this.viewer, this.#altTextManager, this.eventBus, pdfDocument, this.pageColors);
+          this.#annotationEditorUIManager = new pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.AnnotationEditorUIManager(this.container, this.viewer, this.#altTextManager, this.eventBus, pdfDocument, this.pageColors, this.#annotationEditorHighlightColors, this.#enableHighlightFloatingButton, this.#mlManager);
+          this.eventBus.dispatch("annotationeditoruimanager", {
+            source: this,
+            uiManager: this.#annotationEditorUIManager
+          });
           if (mode !== pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.AnnotationEditorType.NONE) {
             this.#annotationEditorUIManager.updateMode(mode);
           }
@@ -6080,7 +6083,8 @@ class PDFViewer {
       });
       this.viewer.style.setProperty("--scale-factor", viewport.scale);
       if (this.pageColors?.foreground === "CanvasText" || this.pageColors?.background === "Canvas") {
-        this.viewer.style.setProperty("--hcm-highlight-filter", pdfDocument.filterFactory.addHighlightHCMFilter("CanvasText", "Canvas", "HighlightText", "Highlight"));
+        this.viewer.style.setProperty("--hcm-highlight-filter", pdfDocument.filterFactory.addHighlightHCMFilter("highlight", "CanvasText", "Canvas", "HighlightText", "Highlight"));
+        this.viewer.style.setProperty("--hcm-highlight-selected-filter", pdfDocument.filterFactory.addHighlightHCMFilter("highlight_selected", "CanvasText", "Canvas", "HighlightText", "ButtonText"));
       }
       for (let pageNum = 1; pageNum <= pagesCount; ++pageNum) {
         const pageView = new _pdf_page_view_js__WEBPACK_IMPORTED_MODULE_3__.PDFPageView({
@@ -6094,7 +6098,6 @@ class PDFViewer {
           textLayerMode,
           annotationMode,
           imageResourcesPath: this.imageResourcesPath,
-          isOffscreenCanvasSupported: this.isOffscreenCanvasSupported,
           maxCanvasPixels: this.maxCanvasPixels,
           pageColors: this.pageColors,
           l10n: this.l10n,
@@ -6102,11 +6105,7 @@ class PDFViewer {
         });
         this._pages.push(pageView);
       }
-      const firstPageView = this._pages[0];
-      if (firstPageView) {
-        firstPageView.setPdfPage(firstPdfPage);
-        this.linkService.cachePageRef(1, firstPdfPage.ref);
-      }
+      this._pages[0]?.setPdfPage(firstPdfPage);
       if (this._scrollMode === _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__.ScrollMode.PAGE) {
         this.#ensurePageViewVisible();
       } else if (this._spreadMode !== _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__.SpreadMode.NONE) {
@@ -6140,7 +6139,6 @@ class PDFViewer {
             if (!pageView.pdfPage) {
               pageView.setPdfPage(pdfPage);
             }
-            this.linkService.cachePageRef(pageNum, pdfPage.ref);
             if (--getPagesLeft === 0) {
               this._pagesCapability.resolve();
             }
@@ -6202,9 +6200,9 @@ class PDFViewer {
     this._location = null;
     this._pagesRotation = 0;
     this._optionalContentConfigPromise = null;
-    this._firstPageCapability = new pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.PromiseCapability();
-    this._onePageRenderedCapability = new pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.PromiseCapability();
-    this._pagesCapability = new pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__.PromiseCapability();
+    this._firstPageCapability = Promise.withResolvers();
+    this._onePageRenderedCapability = Promise.withResolvers();
+    this._pagesCapability = Promise.withResolvers();
     this._scrollMode = _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__.ScrollMode.VERTICAL;
     this._previousScrollMode = _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__.ScrollMode.UNKNOWN;
     this._spreadMode = _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__.SpreadMode.NONE;
@@ -6652,9 +6650,6 @@ class PDFViewer {
       if (!pageView.pdfPage) {
         pageView.setPdfPage(pdfPage);
       }
-      if (!this.linkService._cachedPageNumber?.(pdfPage.ref)) {
-        this.linkService.cachePageRef(pageView.id, pdfPage.ref);
-      }
       return pdfPage;
     } catch (reason) {
       console.error("Unable to get page for page view", reason);
@@ -6727,7 +6722,9 @@ class PDFViewer {
     }
     if (!this._optionalContentConfigPromise) {
       console.error("optionalContentConfigPromise: Not initialized yet.");
-      return this.pdfDocument.getOptionalContentConfig();
+      return this.pdfDocument.getOptionalContentConfig({
+        intent: "display"
+      });
     }
     return this._optionalContentConfigPromise;
   }
@@ -7091,7 +7088,7 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 869:
+/***/ 603:
 /***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
@@ -7102,9 +7099,9 @@ __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 /* harmony export */   AnnotationEditorUIManager: () => (/* binding */ AnnotationEditorUIManager),
 /* harmony export */   AnnotationLayer: () => (/* binding */ AnnotationLayer),
 /* harmony export */   AnnotationMode: () => (/* binding */ AnnotationMode),
+/* harmony export */   DrawLayer: () => (/* binding */ DrawLayer),
 /* harmony export */   PermissionFlag: () => (/* binding */ PermissionFlag),
 /* harmony export */   PixelsPerInch: () => (/* binding */ PixelsPerInch),
-/* harmony export */   PromiseCapability: () => (/* binding */ PromiseCapability),
 /* harmony export */   RenderingCancelledException: () => (/* binding */ RenderingCancelledException),
 /* harmony export */   XfaLayer: () => (/* binding */ XfaLayer),
 /* harmony export */   createValidAbsoluteUrl: () => (/* binding */ createValidAbsoluteUrl),
@@ -7118,7 +7115,7 @@ __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 /* harmony export */   updateTextLayer: () => (/* binding */ updateTextLayer),
 /* harmony export */   version: () => (/* binding */ version)
 /* harmony export */ });
-/* unused harmony exports AnnotationEditorParamsType, build, CMapCompressionType, DOMSVGFactory, DrawLayer, FeatureTest, getDocument, getFilenameFromUrl, getXfaPageViewport, GlobalWorkerOptions, ImageKind, InvalidPDFException, isDataScheme, MissingPDFException, noContextMenu, OPS, Outliner, PasswordResponses, PDFDataRangeTransport, PDFDateString, PDFWorker, UnexpectedResponseException, Util, VerbosityLevel */
+/* unused harmony exports AnnotationEditorParamsType, build, CMapCompressionType, ColorPicker, DOMSVGFactory, FeatureTest, getDocument, getFilenameFromUrl, getXfaPageViewport, GlobalWorkerOptions, ImageKind, InvalidPDFException, isDataScheme, MissingPDFException, noContextMenu, OPS, Outliner, PasswordResponses, PDFDataRangeTransport, PDFDateString, PDFWorker, UnexpectedResponseException, Util, VerbosityLevel */
 if (!globalThis.pdfjsLib) {
   await globalThis.pdfjsLibPromise;
 }
@@ -7132,6 +7129,7 @@ const {
   AnnotationMode,
   build,
   CMapCompressionType,
+  ColorPicker,
   createValidAbsoluteUrl,
   DOMSVGFactory,
   DrawLayer,
@@ -7157,7 +7155,6 @@ const {
   PDFWorker,
   PermissionFlag,
   PixelsPerInch,
-  PromiseCapability,
   RenderingCancelledException,
   renderTextLayer,
   setLayerDimensions,
@@ -7175,13 +7172,13 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 498:
+/***/ 698:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   StructTreeLayerBuilder: () => (/* binding */ StructTreeLayerBuilder)
 /* harmony export */ });
-/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(927);
+/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(256);
 
 const PDF_ROLE_TO_HTML_ROLE = {
   Document: null,
@@ -7299,13 +7296,13 @@ class StructTreeLayerBuilder {
 
 /***/ }),
 
-/***/ 630:
+/***/ 860:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   TextAccessibilityManager: () => (/* binding */ TextAccessibilityManager)
 /* harmony export */ });
-/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(927);
+/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(256);
 
 class TextAccessibilityManager {
   #enabled = false;
@@ -7460,13 +7457,14 @@ class TextAccessibilityManager {
 
 /***/ }),
 
-/***/ 274:
+/***/ 27:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   TextHighlighter: () => (/* binding */ TextHighlighter)
 /* harmony export */ });
 class TextHighlighter {
+  #eventAbortController = null;
   constructor({
     findController,
     eventBus,
@@ -7476,7 +7474,6 @@ class TextHighlighter {
     this.matches = [];
     this.eventBus = eventBus;
     this.pageIdx = pageIndex;
-    this._onUpdateTextLayerMatches = null;
     this.textDivs = null;
     this.textContentItemsStr = null;
     this.enabled = false;
@@ -7493,13 +7490,15 @@ class TextHighlighter {
       throw new Error("TextHighlighter is already enabled.");
     }
     this.enabled = true;
-    if (!this._onUpdateTextLayerMatches) {
-      this._onUpdateTextLayerMatches = evt => {
+    if (!this.#eventAbortController) {
+      this.#eventAbortController = new AbortController();
+      this.eventBus._on("updatetextlayermatches", evt => {
         if (evt.pageIndex === this.pageIdx || evt.pageIndex === -1) {
           this._updateMatches();
         }
-      };
-      this.eventBus._on("updatetextlayermatches", this._onUpdateTextLayerMatches);
+      }, {
+        signal: this.#eventAbortController.signal
+      });
     }
     this._updateMatches();
   }
@@ -7508,10 +7507,8 @@ class TextHighlighter {
       return;
     }
     this.enabled = false;
-    if (this._onUpdateTextLayerMatches) {
-      this.eventBus._off("updatetextlayermatches", this._onUpdateTextLayerMatches);
-      this._onUpdateTextLayerMatches = null;
-    }
+    this.#eventAbortController?.abort();
+    this.#eventAbortController = null;
     this._updateMatches(true);
   }
   _convertMatches(matches, matchesLength) {
@@ -7688,29 +7685,30 @@ class TextHighlighter {
 
 /***/ }),
 
-/***/ 13:
+/***/ 765:
 /***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   TextLayerBuilder: () => (/* binding */ TextLayerBuilder)
 /* harmony export */ });
-/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(869);
-/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(927);
+/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(603);
+/* harmony import */ var _ui_utils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(256);
 var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__]);
 pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = (__webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__)[0];
 
 
 class TextLayerBuilder {
   #enablePermissions = false;
+  #onAppend = null;
   #rotation = 0;
   #scale = 0;
   #textContentSource = null;
   constructor({
     highlighter = null,
     accessibilityManager = null,
-    isOffscreenCanvasSupported = true,
-    enablePermissions = false
+    enablePermissions = false,
+    onAppend = null
   }) {
     this.textContentItemsStr = [];
     this.renderingDone = false;
@@ -7719,10 +7717,10 @@ class TextLayerBuilder {
     this.textLayerRenderTask = null;
     this.highlighter = highlighter;
     this.accessibilityManager = accessibilityManager;
-    this.isOffscreenCanvasSupported = isOffscreenCanvasSupported;
     this.#enablePermissions = enablePermissions === true;
-    this.onAppend = null;
+    this.#onAppend = onAppend;
     this.div = document.createElement("div");
+    this.div.tabIndex = 0;
     this.div.className = "textLayer";
   }
   #finishRendering() {
@@ -7753,7 +7751,6 @@ class TextLayerBuilder {
           viewport,
           textDivs: this.textDivs,
           textDivProperties: this.textDivProperties,
-          isOffscreenCanvasSupported: this.isOffscreenCanvasSupported,
           mustRescale,
           mustRotate
         });
@@ -7772,14 +7769,13 @@ class TextLayerBuilder {
       viewport,
       textDivs: this.textDivs,
       textDivProperties: this.textDivProperties,
-      textContentItemsStr: this.textContentItemsStr,
-      isOffscreenCanvasSupported: this.isOffscreenCanvasSupported
+      textContentItemsStr: this.textContentItemsStr
     });
     await this.textLayerRenderTask.promise;
     this.#finishRendering();
     this.#scale = scale;
     this.#rotation = rotation;
-    this.onAppend(this.div);
+    this.#onAppend?.(this.div);
     this.highlighter?.enable();
     this.accessibilityManager?.enable();
   }
@@ -7852,7 +7848,7 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 927:
+/***/ 256:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
@@ -8018,15 +8014,13 @@ function parseQueryString(query) {
   }
   return params;
 }
-const InvisibleCharactersRegExp = /[\x00-\x1F]/g;
+const InvisibleCharsRegExp = /[\x00-\x1F]/g;
 function removeNullCharacters(str, replaceInvisible = false) {
-  if (!InvisibleCharactersRegExp.test(str)) {
+  if (!InvisibleCharsRegExp.test(str)) {
     return str;
   }
   if (replaceInvisible) {
-    return str.replaceAll(InvisibleCharactersRegExp, m => {
-      return m === "\x00" ? "" : " ";
-    });
+    return str.replaceAll(InvisibleCharsRegExp, m => m === "\x00" ? "" : " ");
   }
   return str.replaceAll("\x00", "");
 }
@@ -8369,14 +8363,14 @@ function toggleExpandedBtn(button, toggle, view = null) {
 
 /***/ }),
 
-/***/ 12:
+/***/ 973:
 /***/ ((__webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   XfaLayerBuilder: () => (/* binding */ XfaLayerBuilder)
 /* harmony export */ });
-/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(869);
+/* harmony import */ var pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(603);
 var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__]);
 pdfjs_lib__WEBPACK_IMPORTED_MODULE_0__ = (__webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__)[0];
 
@@ -8567,7 +8561,7 @@ __webpack_async_result__();
 /******/ // startup
 /******/ // Load entry module and return exports
 /******/ // This entry module used 'module' so it can't be inlined
-/******/ var __webpack_exports__ = __webpack_require__(103);
+/******/ var __webpack_exports__ = __webpack_require__(624);
 /******/ __webpack_exports__ = globalThis.pdfjsViewer = await (globalThis.pdfjsViewerPromise = __webpack_exports__);
 /******/ var __webpack_exports__AnnotationLayerBuilder = __webpack_exports__.AnnotationLayerBuilder;
 /******/ var __webpack_exports__DownloadManager = __webpack_exports__.DownloadManager;
@@ -8575,7 +8569,6 @@ __webpack_async_result__();
 /******/ var __webpack_exports__FindState = __webpack_exports__.FindState;
 /******/ var __webpack_exports__GenericL10n = __webpack_exports__.GenericL10n;
 /******/ var __webpack_exports__LinkTarget = __webpack_exports__.LinkTarget;
-/******/ var __webpack_exports__NullL10n = __webpack_exports__.NullL10n;
 /******/ var __webpack_exports__PDFFindController = __webpack_exports__.PDFFindController;
 /******/ var __webpack_exports__PDFHistory = __webpack_exports__.PDFHistory;
 /******/ var __webpack_exports__PDFLinkService = __webpack_exports__.PDFLinkService;
@@ -8592,7 +8585,7 @@ __webpack_async_result__();
 /******/ var __webpack_exports__TextLayerBuilder = __webpack_exports__.TextLayerBuilder;
 /******/ var __webpack_exports__XfaLayerBuilder = __webpack_exports__.XfaLayerBuilder;
 /******/ var __webpack_exports__parseQueryString = __webpack_exports__.parseQueryString;
-/******/ export { __webpack_exports__AnnotationLayerBuilder as AnnotationLayerBuilder, __webpack_exports__DownloadManager as DownloadManager, __webpack_exports__EventBus as EventBus, __webpack_exports__FindState as FindState, __webpack_exports__GenericL10n as GenericL10n, __webpack_exports__LinkTarget as LinkTarget, __webpack_exports__NullL10n as NullL10n, __webpack_exports__PDFFindController as PDFFindController, __webpack_exports__PDFHistory as PDFHistory, __webpack_exports__PDFLinkService as PDFLinkService, __webpack_exports__PDFPageView as PDFPageView, __webpack_exports__PDFScriptingManager as PDFScriptingManager, __webpack_exports__PDFSinglePageViewer as PDFSinglePageViewer, __webpack_exports__PDFViewer as PDFViewer, __webpack_exports__ProgressBar as ProgressBar, __webpack_exports__RenderingStates as RenderingStates, __webpack_exports__ScrollMode as ScrollMode, __webpack_exports__SimpleLinkService as SimpleLinkService, __webpack_exports__SpreadMode as SpreadMode, __webpack_exports__StructTreeLayerBuilder as StructTreeLayerBuilder, __webpack_exports__TextLayerBuilder as TextLayerBuilder, __webpack_exports__XfaLayerBuilder as XfaLayerBuilder, __webpack_exports__parseQueryString as parseQueryString };
+/******/ export { __webpack_exports__AnnotationLayerBuilder as AnnotationLayerBuilder, __webpack_exports__DownloadManager as DownloadManager, __webpack_exports__EventBus as EventBus, __webpack_exports__FindState as FindState, __webpack_exports__GenericL10n as GenericL10n, __webpack_exports__LinkTarget as LinkTarget, __webpack_exports__PDFFindController as PDFFindController, __webpack_exports__PDFHistory as PDFHistory, __webpack_exports__PDFLinkService as PDFLinkService, __webpack_exports__PDFPageView as PDFPageView, __webpack_exports__PDFScriptingManager as PDFScriptingManager, __webpack_exports__PDFSinglePageViewer as PDFSinglePageViewer, __webpack_exports__PDFViewer as PDFViewer, __webpack_exports__ProgressBar as ProgressBar, __webpack_exports__RenderingStates as RenderingStates, __webpack_exports__ScrollMode as ScrollMode, __webpack_exports__SimpleLinkService as SimpleLinkService, __webpack_exports__SpreadMode as SpreadMode, __webpack_exports__StructTreeLayerBuilder as StructTreeLayerBuilder, __webpack_exports__TextLayerBuilder as TextLayerBuilder, __webpack_exports__XfaLayerBuilder as XfaLayerBuilder, __webpack_exports__parseQueryString as parseQueryString };
 /******/ 
 
 //# sourceMappingURL=pdf_viewer.mjs.map

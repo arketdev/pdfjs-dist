@@ -3,6 +3,7 @@ export type PageViewport = import("../display_utils.js").PageViewport;
 export type TextAccessibilityManager = import("../../../web/text_accessibility.js").TextAccessibilityManager;
 export type IL10n = import("../../../web/interfaces").IL10n;
 export type AnnotationLayer = import("../annotation_layer.js").AnnotationLayer;
+export type DrawLayer = import("../draw_layer.js").DrawLayer;
 export type AnnotationEditorLayerOptions = {
     mode: Object;
     div: HTMLDivElement;
@@ -12,6 +13,8 @@ export type AnnotationEditorLayerOptions = {
     pageIndex: number;
     l10n: IL10n;
     annotationLayer?: import("../annotation_layer.js").AnnotationLayer | undefined;
+    textLayer?: HTMLDivElement | undefined;
+    drawLayer: DrawLayer;
     viewport: PageViewport;
 };
 export type RenderEditorLayerOptions = {
@@ -27,6 +30,8 @@ export type RenderEditorLayerOptions = {
  * @property {number} pageIndex
  * @property {IL10n} l10n
  * @property {AnnotationLayer} [annotationLayer]
+ * @property {HTMLDivElement} [textLayer]
+ * @property {DrawLayer} drawLayer
  * @property {PageViewport} viewport
  */
 /**
@@ -38,15 +43,17 @@ export type RenderEditorLayerOptions = {
  */
 export class AnnotationEditorLayer {
     static _initialized: boolean;
-    static "__#18@#editorTypes": Map<number, typeof FreeTextEditor | typeof InkEditor | typeof StampEditor>;
+    static "__#27@#editorTypes": Map<number, typeof FreeTextEditor | typeof HighlightEditor | typeof InkEditor | typeof StampEditor>;
     /**
      * @param {AnnotationEditorLayerOptions} options
      */
-    constructor({ uiManager, pageIndex, div, accessibilityManager, annotationLayer, viewport, l10n, }: AnnotationEditorLayerOptions);
+    constructor({ uiManager, pageIndex, div, accessibilityManager, annotationLayer, drawLayer, textLayer, viewport, l10n, }: AnnotationEditorLayerOptions);
     pageIndex: number;
     div: HTMLDivElement;
     viewport: import("../display_utils.js").PageViewport;
+    drawLayer: import("../draw_layer.js").DrawLayer;
     get isEmpty(): boolean;
+    get isInvisible(): boolean;
     /**
      * Update the toolbar if it's required to reflect the tool currently used.
      * @param {number} mode
@@ -57,6 +64,7 @@ export class AnnotationEditorLayer {
      * @param {number} mode
      */
     updateMode(mode?: number): void;
+    hasTextLayer(textLayer: any): boolean;
     addInkEditorIfNeeded(isCommitting: any): void;
     /**
      * Set the editing state.
@@ -69,6 +77,7 @@ export class AnnotationEditorLayer {
      */
     addCommands(params: Object): void;
     togglePointerEvents(enabled?: boolean): void;
+    toggleAnnotationLayerPointerEvents(enabled?: boolean): void;
     /**
      * Enable pointer events on the main div in order to enable
      * editor creation.
@@ -84,6 +93,8 @@ export class AnnotationEditorLayer {
      * @param {AnnotationEditor} editor
      */
     setActiveEditor(editor: AnnotationEditor): void;
+    enableTextSelection(): void;
+    disableTextSelection(): void;
     enableClick(): void;
     disableClick(): void;
     attach(editor: any): void;
@@ -120,6 +131,7 @@ export class AnnotationEditorLayer {
      * @returns {string}
      */
     getNextId(): string;
+    canCreateNewEmptyEditor(): boolean | undefined;
     /**
      * Paste some content into a new editor.
      * @param {number} mode
@@ -132,6 +144,14 @@ export class AnnotationEditorLayer {
      * @returns {AnnotationEditor | null}
      */
     deserialize(data: Object): AnnotationEditor | null;
+    /**
+     * Create and add a new editor.
+     * @param {PointerEvent} event
+     * @param {boolean} isCentered
+     * @param [Object] data
+     * @returns {AnnotationEditor}
+     */
+    createAndAddNewEditor(event: PointerEvent, isCentered: boolean, data?: {}): AnnotationEditor;
     /**
      * Create and add a new editor.
      */
@@ -193,9 +213,11 @@ export class AnnotationEditorLayer {
      * @returns {Object} dimensions.
      */
     get pageDimensions(): Object;
+    get scale(): number;
     #private;
 }
 import { AnnotationEditor } from "./editor.js";
 import { FreeTextEditor } from "./freetext.js";
+import { HighlightEditor } from "./highlight.js";
 import { InkEditor } from "./ink.js";
 import { StampEditor } from "./stamp.js";

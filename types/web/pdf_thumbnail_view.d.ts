@@ -81,21 +81,9 @@ export class PDFThumbnailView implements IRenderableView {
      *              rather than calling this one directly.
      */
     cancelRendering(): void;
-    /**
-     * @private
-     */
-    private _getPageDrawContext;
-    /**
-     * @private
-     */
-    private _convertCanvasToImage;
     image: HTMLImageElement | undefined;
     draw(): Promise<any>;
     setImage(pageView: any): void;
-    /**
-     * @private
-     */
-    private _reduceImage;
     /**
      * @param {string|null} label
      */
@@ -118,7 +106,7 @@ export class PDFThumbnailView implements IRenderableView {
  *   mode.
  */
 export class TempImageFactory {
-    static "__#58@#tempCanvas": null;
+    static "__#68@#tempCanvas": null;
     static getCanvas(width: any, height: any): (HTMLCanvasElement | CanvasRenderingContext2D | null)[];
     static destroyCanvas(): void;
 }
